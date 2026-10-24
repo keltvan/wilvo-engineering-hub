@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WILVO | QR-tandwielen</title>
-<!-- Voxel-tandwielen op een staalplaat; de plaat is de QR-code. Tik: de tandwielen zakken weg en de QR blijft.
+<title>WILVO | QR-machine</title>
+<!-- De EUV-lichtbron (voxelmodel, of ?v=gears voor tandwielen) op een staalplaat; de plaat is de QR-code. Tik: de machine zakt weg en de QR blijft.
      Eigen QR-encoder (bytemodus, correctieniveau M, versie 1-10), alleen three.js uit ../../vendor.
      ?u=<adres> verandert de QR (standaard de Engineering Hub), ?f=0|1|2 kiest de afwerking. -->
 <style>
@@ -135,9 +135,9 @@ const params = new URLSearchParams(location.search);
 const HUB = "https://keltvan.github.io/wilvo-engineering-hub/";
 const target = (params.get("u") || HUB).slice(0, 200);
 const FINISH = [
-  { gearA: "#9fb3bd", gearB: "#e0262e", dark: "#2c3438", light: "#e6eef1" }, // staal + WILVO-rood
-  { gearA: "#e0262e", gearB: "#a7c2ce", dark: "#3a1519", light: "#f1e9e7" }, // rood gepoedercoat
-  { gearA: "#d3d8db", gearB: "#6f96a6", dark: "#3d4a52", light: "#eef2f3" }  // zink
+  { gearA: "#9fb3bd", gearB: "#e0262e", vessel: "#7d95a3", accent: "#e0262e", dark: "#2c3438", light: "#e6eef1" }, // staal + WILVO-rood
+  { gearA: "#e0262e", gearB: "#a7c2ce", vessel: "#e0262e", accent: "#a7c2ce", dark: "#3a1519", light: "#f1e9e7" }, // rood gepoedercoat
+  { gearA: "#d3d8db", gearB: "#6f96a6", vessel: "#d3d8db", accent: "#4f7f95", dark: "#3d4a52", light: "#eef2f3" }  // zink
 ];
 let finish = Math.min(2, Math.max(0, +params.get("f") || 0));
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -214,7 +214,7 @@ let lastP = -1;
 function fall(v, p) { // p 0 = op zijn plek, 1 = door de plaat gezakt
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3();
   v.cells.forEach((c, i) => {
-    const e = Math.min(1, Math.max(0, (p - v.delay[i]) / 0.5)); pos.set(c.x, c.y - e * e * 5, c.z);
+    const e = Math.min(1, Math.max(0, (p - v.delay[i]) / 0.5)); pos.set(c.x, c.y - e * e * (c.fall ?? 5), c.z);
     m.compose(pos, q, one); v.mesh.setMatrixAt(i, m);
   });
   v.mesh.instanceMatrix.needsUpdate = true;
@@ -245,29 +245,154 @@ function pinCells({ r, y0, y1, head, delay }) {
   return cells;
 }
 
-const BASE = 1.2, LAYERS = 3, PITCH = 3.3;
-const A = gearCells({ n: 16, pitch: PITCH, bore: 2.0, holes: 5, hr: 1.5, ho: 5.2, layers: LAYERS });
-const B = gearCells({ n: 9, pitch: PITCH, bore: 1.4, holes: 3, hr: 0.7, ho: 2.7, layers: LAYERS });
-const posA = { x: -5.2, z: -3.2 }, thetaC = 0.5, dist = A.rp + B.rp;
-const posB = { x: posA.x + dist * Math.cos(thetaC), z: posA.z + dist * Math.sin(thetaC) };
-const groupA = new THREE.Group(), groupB = new THREE.Group(), pins = new THREE.Group();
-groupA.position.set(posA.x, BASE, posA.z); groupB.position.set(posB.x, BASE, posB.z);
-pins.position.y = 0; scene.add(groupA, groupB, pins);
-const vA = voxels(A.cells, groupA), vB = voxels(B.cells, groupB);
-const topY = BASE + LAYERS * 0.5;
-const pinA = pinCells({ r: 1.6, y0: 0.3, y1: topY, head: 2.4, delay: 0.3 }).map(c => ({ ...c, x: c.x + posA.x, z: c.z + posA.z }));
-const pinB = pinCells({ r: 1.1, y0: 0.3, y1: topY, head: 1.9, delay: 0.3 }).map(c => ({ ...c, x: c.x + posB.x, z: c.z + posB.z }));
-const vP = voxels(pinA.concat(pinB), pins);
+// ---------- Beelden: de EUV-bron (standaard) of de tandwielen (?v=gears) ----------
+function gearsVisual() {
+  const BASE = 1.2, LAYERS = 3, PITCH = 3.3;
+  const A = gearCells({ n: 16, pitch: PITCH, bore: 2.0, holes: 5, hr: 1.5, ho: 5.2, layers: LAYERS });
+  const B = gearCells({ n: 9, pitch: PITCH, bore: 1.4, holes: 3, hr: 0.7, ho: 2.7, layers: LAYERS });
+  const posA = { x: -5.2, z: -3.2 }, thetaC = 0.5, dist = A.rp + B.rp;
+  const posB = { x: posA.x + dist * Math.cos(thetaC), z: posA.z + dist * Math.sin(thetaC) };
+  const groupA = new THREE.Group(), groupB = new THREE.Group(), pins = new THREE.Group();
+  groupA.position.set(posA.x, BASE, posA.z); groupB.position.set(posB.x, BASE, posB.z);
+  scene.add(groupA, groupB, pins);
+  const vA = voxels(A.cells, groupA), vB = voxels(B.cells, groupB);
+  const topY = BASE + LAYERS * 0.5;
+  const pinA = pinCells({ r: 1.6, y0: 0.3, y1: topY, head: 2.4, delay: 0.3 }).map(c => ({ ...c, x: c.x + posA.x, z: c.z + posA.z }));
+  const pinB = pinCells({ r: 1.1, y0: 0.3, y1: topY, head: 1.9, delay: 0.3 }).map(c => ({ ...c, x: c.x + posB.x, z: c.z + posB.z }));
+  const vP = voxels(pinA.concat(pinB), pins);
+  const nA = 16, nB = 9, beta0 = thetaC * (1 + nA / nB) + Math.PI - Math.PI / nB;
+  return {
+    az: 45, ty: 1.2, fitH: 7, zoom: 1, vox: [vA, vB, vP],
+    recolor(f, c) {
+      vA.cells.forEach((_, i) => vA.mesh.setColorAt(i, c.set(f.gearA).multiplyScalar(vA.j[i])));
+      vB.cells.forEach((_, i) => vB.mesh.setColorAt(i, c.set(f.gearB).multiplyScalar(vB.j[i])));
+      vP.cells.forEach((cell, i) => vP.mesh.setColorAt(i, c.set(cell.y > topY ? "#9aa7ad" : "#59656b").multiplyScalar(vP.j[i])));
+      [vA.mesh, vB.mesh, vP.mesh].forEach(m => { m.instanceColor.needsUpdate = true; });
+    },
+    tick(dt, u, t) {
+      groupA.rotation.y = -t * 0.35; groupB.rotation.y = -(beta0 - nA / nB * t * 0.35);
+      groupA.visible = groupB.visible = pins.visible = u < 0.999;
+    }
+  };
+}
 
+// De EUV-lichtbron van een chiplithografiemachine als voxelmodel (1 eenheid = 10 cm, assen langs x): vat met
+// uitsnede, spiegelschaal (de echte ellipsoide), druppelgenerator, laserlijn en scannerbuis. Een CO2-laser raakt
+// elke 0,2 s een tindruppel: plasmaflits, EUV-straaltjes via de spiegel naar het tussenfocus.
+function machineVisual() {
+  const s = 0.4, CL = 6.0, AX = -5.2, S1 = 1.8, S2 = 14.2, EA = 8.0, EB = Math.sqrt(EA * EA - 6.2 * 6.2);
+  const sOf = r => EA - EA * Math.sqrt(Math.max(0, 1 - (r / EB) ** 2));          // spiegeloppervlak: a bij straal r
+  const lerpN = (a, b, t) => a + (b - a) * t, inr = (v, lo, hi) => v >= lo && v < hi;
+  const group = new THREE.Group(); scene.add(group);
+  const classify = (a, y, z) => {
+    const h = y - CL, r = Math.hypot(h, z), th = Math.atan2(h, z), rho = Math.hypot(a - S1, z);
+    // druppelgenerator boven het vat en het huis van het schuifventiel: nooit weggesneden
+    if (h >= 4.0 && h < 5.6 && rho < 0.2 + 0.4 * (h - 4.0) / 1.6) return "steel";
+    if (inr(h, 5.0, 5.6) && rho < 1.05) return "flange";
+    if (inr(h, 5.6, 8.6) && rho < 0.7) return "steel";
+    if (inr(h, 5.7, 8.4) && rho >= 0.7 && rho < 1.0 && ((Math.atan2(z, a - S1) / (2 * Math.PI) - h / 1.1) % 1 + 1) % 1 < 0.24) return "coil";
+    if (inr(h, 8.6, 9.3) && rho < 0.85) return "brass";
+    if (inr(h, 9.3, 9.8) && rho < 0.95) return "accent";
+    if (inr(a, 15.8, 16.7) && inr(h, 1.2, 2.8) && Math.abs(z) < 1.0) return "vessel";
+    // onderstellen: zadels onder het vat, steunen onder laserlijn en scannerbuis
+    if (y > 0.8) {
+      for (const a0 of [-0.2, 5.2]) if (Math.abs(a - a0) < 0.6 && Math.abs(z) < 3.6 && y < CL - Math.sqrt(Math.max(0, 27.04 - z * z)) + 0.1) return "frame";
+      for (const [a0, a1, top] of [[-9.8, -9.0, 1.35], [-6.2, -5.4, 1.0], [17.3, 18.1, 1.3], [19.6, 20.4, 1.3]]) if (inr(a, a0, a1) && Math.abs(z) < 1.0 && y < CL - top) return "frame";
+      if ((inr(a, -9.8, -5.4) || inr(a, 17.3, 20.4)) && Math.abs(z) < 0.5 && inr(y, 1.6, 2.4)) return "frame";
+    }
+    // alles om de optische as; boven de as aan de kijkerskant is het vat opengewerkt
+    const cut = a > -1.7 && z > 0 && h > 0;
+    let k = null;
+    const rc = lerpN(5.2, 0.7, (a - 6.6) / 6.4);
+    if (inr(a, -1.2, 6.2) && inr(r, 4.8, 5.2)) k = "vessel";
+    else if (inr(a, -1.2, -0.8) && inr(r, 0.62, 5.2)) k = "vessel";
+    else if ((inr(a, -1.6, -1.2) || inr(a, 6.2, 6.6)) && inr(r, 4.8, 6.0)) k = r > 5.3 && r < 5.7 && Math.cos(th * 18) > 0.6 ? "bolt" : "flange";
+    else if (inr(a, 6.6, 13.0) && inr(r, Math.max(rc - 0.5, 0.45), rc)) k = "vessel";
+    else if (inr(a, 13.0, 15.0) && inr(r, 0.45, 0.85)) k = "steel";
+    else if ((inr(a, 15.0, 15.4) || inr(a, 16.9, 17.3)) && inr(r, 0.45, 1.7)) k = "flange";
+    else if (inr(a, 15.4, 16.9) && inr(r, 0.45, 1.2)) k = "vessel";
+    else if (inr(a, 17.3, 20.5) && inr(r, 0.9, 1.3)) k = "alu";
+    else if (inr(a, 20.5, 20.9) && inr(r, 0.5, 1.6)) k = "accent";
+    else if (inr(r, 0.52, 3.25)) { const so = sOf(r); if (a > so - 0.8 && a <= so) k = a > so - 0.4 ? "mirror" : "substrate"; }
+    if (!k && inr(a, -1.2, -0.3) && inr(r, 0.56, 1.05)) k = "steelD";
+    if (!k && inr(a, 0.8, 1.2) && inr(r, 4.0, 4.4)) k = "gold";
+    if (k) return cut ? null : k;
+    // laserlijn buiten het vat: buis, balg en eindmodule (niet weggesneden)
+    if (inr(a, -8.4, 0.2) && inr(r, 0.28, 0.5 + (inr(a, -7.8, -4.2) && Math.sin(a * 7.85) > 0 ? 0.55 : 0))) return "steel";
+    if (inr(a, -10.8, -8.4) && r < 1.3) return inr(a, -10.8, -10.4) && r < 1.0 ? "gold" : "alu";
+    if (inr(a, -9.0, -8.6) && inr(r, 1.3, 1.55)) return "accent";
+    // tinvanger op de bodem van het vat
+    const hh = y - (CL - 4.8);
+    if (inr(hh, 0, 2.2) && !cut) { const rf = 0.5 + hh / 2.2; if (inr(rho, Math.max(rf - 0.5, 0), rf)) return "steel"; if (inr(hh, 0.4, 0.8) && rho < 0.5) return "tin"; }
+    return null;
+  };
+  const cells = [];
+  for (let ia = 0; ia < 80; ia++) for (let iy = 0; iy < 42; iy++) for (let iz = -16; iz < 16; iz++) {
+    const a = -11 + (ia + 0.5) * s, y = (iy + 0.5) * s, z = (iz + 0.5) * s, key = classify(a, y, z);
+    if (key) cells.push({ x: a + AX, y, z, key, fall: y + 1.4, delay: Math.min(0.38, 0.27 * (1 - y / 17) + 0.1 * Math.random()) });
+  }
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(s, s, s), mat, cells.length); mesh.castShadow = mesh.receiveShadow = true; group.add(mesh);
+  const vM = { mesh, cells, j: cells.map(jitter), delay: cells.map(c => c.delay) };
+  const PAL = { flange: "#9aa7ad", bolt: "#3a4248", steel: "#aeb9bf", steelD: "#59656b", alu: "#d5dade", gold: "#e0b24f", brass: "#d6b25a", mirror: "#9db4e6", substrate: "#3a3d46", coil: "#ff9a3a", tin: "#d98a3f", frame: "#2b3238" };
+
+  // Effecten: druppels, plasma, laserstraal, EUV-straaltjes via de spiegel, gloed in het tussenfocus
+  const fx = new THREE.Group(); scene.add(fx);
+  const glow = (geo, color, op) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); m.castShadow = false; m.frustumCulled = false; fx.add(m); return m; };
+  const P0 = new THREE.Vector3(S1 + AX, CL, 0), P2 = new THREE.Vector3(S2 + AX, CL, 0);
+  const VT = 0.2, VV = 4.0, step = VT * VV, ND = 6;
+  const drops = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ color: 0xe3e7ec }), ND); drops.frustumCulled = false; fx.add(drops);
+  const core = glow(new THREE.SphereGeometry(1, 20, 14), 0xeef0ff, 1), halo = glow(new THREE.SphereGeometry(1, 20, 14), 0x6a74ff, 0.5);
+  core.position.copy(P0); halo.position.copy(P0);
+  const beam1 = glow(new THREE.CylinderGeometry(0.03, 0.3, S1 + 0.8, 16, 1, true).rotateZ(-Math.PI / 2), 0xff2a55, 0.4); beam1.position.set((S1 - 0.8) / 2 + AX, CL, 0);
+  const beam2 = glow(new THREE.CylinderGeometry(0.45, 0.03, 1.6, 16, 1, true).rotateZ(-Math.PI / 2), 0xff2a55, 0.25); beam2.position.set(S1 + 0.8 + AX, CL, 0);
+  const ifCore = glow(new THREE.SphereGeometry(0.4, 16, 12), 0xdfe4ff, 1), ifHalo = glow(new THREE.SphereGeometry(1, 16, 12), 0x5a64ff, 0.4);
+  ifCore.position.copy(P2); ifHalo.position.copy(P2);
+  const light = new THREE.PointLight(0x8896ff, 0, 15, 1.2); light.position.copy(P0); scene.add(light);
+  const NR = 90, NP = 260, paths = [], rr = (() => { let q = 11; return () => (q = (q * 16807) % 2147483647) / 2147483647; })();
+  for (let i = 0; i < NR; i++) {
+    const r = lerpN(0.7, 3.1, Math.sqrt(rr())), ph = rr() * Math.PI * 2, P = new THREE.Vector3(sOf(r) + AX, CL + r * Math.sin(ph), r * Math.cos(ph));
+    paths.push({ P, l1: P.distanceTo(P0), l2: P2.distanceTo(P) });
+  }
+  const rays = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), new THREE.MeshBasicMaterial({ color: 0x9a90ff, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }), NP); rays.frustumCulled = false; fx.add(rays);
+  const pp = Array.from({ length: NP }, () => ({ i: (rr() * NR) | 0, u: rr(), v: 0.5 + rr() * 0.5 }));
+  const dm = new THREE.Matrix4(), dq = new THREE.Quaternion(), dp = new THREE.Vector3(), ds = new THREE.Vector3(), tmp = new THREE.Vector3();
+  const put = (m, k, p, sc) => { ds.setScalar(Math.max(sc, 1e-4)); dm.compose(p, dq, ds); m.setMatrixAt(k, dm); };
+  return {
+    az: 22, ty: 5.5, fitH: 17, zoom: 0.88, vox: [vM],
+    recolor(f, c) {
+      const vessel = new THREE.Color(f.vessel), accent = new THREE.Color(f.accent);
+      cells.forEach((cell, i) => vM.mesh.setColorAt(i, (cell.key === "vessel" ? c.copy(vessel) : cell.key === "accent" ? c.copy(accent) : c.set(PAL[cell.key])).multiplyScalar(vM.j[i])));
+      vM.mesh.instanceColor.needsUpdate = true;
+    },
+    tick(dt, u, t) {
+      const fade = 1 - ss(u / 0.3), ph = t % VT, flash = ph > 0.05 ? Math.exp(-(ph - 0.05) / 0.04) : 0;
+      group.visible = u < 0.999; fx.visible = fade > 0.01; light.intensity = fx.visible ? 2.2 * flash * fade : 0;
+      if (!fx.visible) return;
+      for (let i = 0; i < ND; i++) { const y = (i + 1) * step - ph * VV; dp.set(P0.x, CL + y, 0); put(drops, i, dp, y > 0.15 && y < 4.0 ? 1 : 0); }
+      drops.instanceMatrix.needsUpdate = true;
+      const rp = 0.5 + 0.55 * flash;
+      core.visible = halo.visible = flash > 0.02; core.scale.setScalar(rp * 0.7); halo.scale.setScalar(rp * 1.8); core.material.opacity = Math.min(1, flash * 1.3) * fade; halo.material.opacity = 0.5 * flash * fade;
+      beam1.material.opacity = (0.12 + 0.5 * flash) * fade; beam2.material.opacity = (0.05 + 0.3 * flash) * fade;
+      ifCore.material.opacity = (0.25 + 0.75 * flash) * fade; ifHalo.scale.setScalar(0.9 + 0.8 * flash); ifHalo.material.opacity = 0.45 * flash * fade;
+      const e = (0.08 + 0.92 * flash) * fade;
+      pp.forEach((q, k) => {
+        q.u = (q.u + dt * 0.55 * q.v) % 1; const pa = paths[q.i], d = q.u * (pa.l1 + pa.l2);
+        if (d < pa.l1) tmp.copy(P0).lerp(pa.P, d / pa.l1); else tmp.copy(pa.P).lerp(P2, (d - pa.l1) / pa.l2);
+        put(rays, k, tmp, e);
+      });
+      rays.instanceMatrix.needsUpdate = true;
+    }
+  };
+}
+
+const visual = params.get("v") === "gears" ? gearsVisual() : machineVisual();
 function recolor() {
   const f = FINISH[finish], c = new THREE.Color();
   renderer.setClearColor(0xf5f3f1);
   slab.material.color.set(f.light);
   mods.forEach((o, i) => plate.setColorAt(i, c.set(o.dark ? f.dark : f.light).multiplyScalar(o.j)));
-  vA.cells.forEach((_, i) => vA.mesh.setColorAt(i, c.set(f.gearA).multiplyScalar(vA.j[i])));
-  vB.cells.forEach((_, i) => vB.mesh.setColorAt(i, c.set(f.gearB).multiplyScalar(vB.j[i])));
-  vP.cells.forEach((cell, i) => vP.mesh.setColorAt(i, c.set(cell.y > topY ? "#9aa7ad" : "#59656b").multiplyScalar(vP.j[i])));
-  [plate, vA.mesh, vB.mesh, vP.mesh].forEach(m => { m.instanceColor.needsUpdate = true; });
+  plate.instanceColor.needsUpdate = true;
+  visual.recolor(f, c);
 }
 recolor();
 
@@ -276,11 +401,11 @@ const ss = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); }
 const rad = d => d * Math.PI / 180;
 let u = 0, goal = 0, spin = 0, last = performance.now();
 function view(k) {
-  const az = rad(45) * (1 - k), el = rad(33 + 56.9 * k), fit = Math.cos(az) + Math.sin(az);
-  const needW = 2 * half * fit * 1.04, needH = 2 * half * fit * Math.sin(el) * 1.02 + 7 * Math.cos(el) + 2;
-  const w = stage.clientWidth || 1, h = stage.clientHeight || 1, vh = Math.max(needH, needW * h / w);
+  const az = rad(visual.az) * (1 - k), el = rad(33 + 56.9 * k), fit = Math.cos(az) + Math.sin(az);
+  const needW = 2 * half * fit * 1.04, needH = 2 * half * fit * Math.sin(el) * 1.02 + visual.fitH * Math.cos(el) + 2;
+  const w = stage.clientWidth || 1, h = stage.clientHeight || 1, vh = Math.max(needH, needW * h / w) * (1 - (1 - visual.zoom) * (1 - k));
   cam.left = -vh * w / h / 2; cam.right = vh * w / h / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
-  const ty = 1.2 * (1 - k);
+  const ty = visual.ty * (1 - k);
   cam.position.set(100 * Math.cos(el) * Math.sin(az), ty + 100 * Math.sin(el), 100 * Math.cos(el) * Math.cos(az));
   cam.lookAt(0, ty, 0);
 }
@@ -300,14 +425,13 @@ document.querySelectorAll("#bar button").forEach((b, i) => b.addEventListener("c
 }));
 document.querySelectorAll("#bar button").forEach((b, i) => b.setAttribute("aria-checked", String(i === finish)));
 
-const nA = 16, nB = 9, beta0 = thetaC * (1 + nA / nB) + Math.PI - Math.PI / nB;
+let clock = 0;
 function frame(now) {
   const dt = Math.min(0.3, (now - last) / 1000); last = now;
   if (u !== goal) { u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 1.5)); }
-  if (u !== lastP) { const k = ss((u - 0.3) / 0.7); fall(vA, u); fall(vB, u); fall(vP, u); view(k); flatten(k); lastP = u; }
-  if (!reduceMotion) spin += dt * 0.35;
-  groupA.rotation.y = -spin; groupB.rotation.y = -(beta0 - nA / nB * spin);
-  groupA.visible = groupB.visible = pins.visible = u < 0.999;
+  if (u !== lastP) { const k = ss((u - 0.3) / 0.7); visual.vox.forEach(v => fall(v, u)); view(k); flatten(k); lastP = u; }
+  if (!reduceMotion) clock += dt;
+  visual.tick(dt, u, reduceMotion ? 0.1 : clock);
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
