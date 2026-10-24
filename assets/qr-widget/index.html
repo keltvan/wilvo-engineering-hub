@@ -152,7 +152,7 @@ if (!renderer) { // zonder WebGL: platte QR, zodat de tegel nooit leeg blijft
 }
 renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
 renderer.setClearColor(0xf5f3f1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = true; renderer.autoClear = false;
 stage.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.add(new THREE.AmbientLight(0xffffff, 0.62));
@@ -171,6 +171,14 @@ const rad = d => d * Math.PI / 180, lerp = (a, b, t) => a + (b - a) * t;
 // Ondergrond: een lichte stalen plaat in een rode bak met opgezette randen (de QR-code staat er licht op af).
 const plate = new THREE.Mesh(new THREE.BoxGeometry(N, 0.5, N), new THREE.MeshLambertMaterial({ color: 0xeef2f3 }));
 plate.position.y = 0.25; plate.receiveShadow = true; scene.add(plate);
+{ // de QR ligt er al, heel licht, als ondergrond; de blokjes van het logo komen er straks op te liggen
+  const px = 8, c = document.createElement("canvas"); c.width = c.height = N * px; const g = c.getContext("2d");
+  g.fillStyle = "#f4f7f8"; g.fillRect(0, 0, c.width, c.height); g.fillStyle = "#e2e8eb";
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (qr.dark(x, y)) g.fillRect((x + 2) * px, (y + 2) * px, px, px);
+  const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+  const ghost = new THREE.Mesh(new THREE.PlaneGeometry(N, N), new THREE.MeshLambertMaterial({ map: tex }));
+  ghost.rotation.x = -Math.PI / 2; ghost.position.y = 0.505; ghost.receiveShadow = true; scene.add(ghost);
+}
 const trayMat = new THREE.MeshLambertMaterial({ color: 0xe0262e });
 [[0, N / 2 + 0.25, N + 1, 0.5], [0, -N / 2 - 0.25, N + 1, 0.5], [N / 2 + 0.25, 0, 0.5, N], [-N / 2 - 0.25, 0, 0.5, N]].forEach(([x, z, w, d]) => {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.5, d), trayMat); m.position.set(x, -0.25, z); m.castShadow = m.receiveShadow = true; scene.add(m);
@@ -201,7 +209,7 @@ function build(px) {
   const used = new Uint8Array(main.length), cb = new THREE.Color(QRC);
   const item = (a, b, sink) => {
     const ca = new THREE.Color(COL[a.key]).multiplyScalar(0.94 + rand() * 0.1);
-    return { a, b, sink, ca, cb: sink ? ca : cb.clone().multiplyScalar(0.96 + rand() * 0.07), delay: Math.min(0.4, 0.34 * (1 - a.y / 12.5) + 0.04 * rand()), bump: sink ? 0 : 0.16 * Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * (0.9 + 0.2 * rand()) };
+    return { a, b, sink, ca, cb: sink ? ca : cb.clone().multiplyScalar(0.96 + rand() * 0.07), delay: 0.12 * (a.x + 16.5) / 33 + 0.04 * rand(), bump: sink ? 0 : 0.05 * Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) };
   };
   dst.forEach((b, k) => { const s = Math.min(main.length - 1, Math.floor((k + 0.5) * main.length / dst.length)); used[s] = 1; items.push(item(main[s], b, false)); });
   main.forEach((a, s) => { if (!used[s]) items.push(item(a, { x: a.x, y: 0.4, z: a.z + 5 * rand() }, true)); });
@@ -214,7 +222,7 @@ function build(px) {
 function morph(p) { // p 0 = logo, 1 = QR
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3(), c = new THREE.Color();
   items.forEach((v, i) => {
-    const e = Math.min(1, Math.max(0, (p - v.delay) / 0.6)), t = e * e * (3 - 2 * e);
+    const e = Math.min(1, Math.max(0, (p - v.delay) / 0.8)), t = e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
     pos.set(lerp(v.a.x, v.b.x, t), lerp(v.a.y, v.b.y, t) + v.bump * Math.sin(Math.PI * t), lerp(v.a.z, v.b.z, t));
     sc.setScalar(Math.max(v.sink ? 1 - ss((e - 0.55) / 0.45) : 1, 1e-4)); m.compose(pos, q, sc); mesh.setMatrixAt(i, m);
     mesh.setColorAt(i, c.copy(v.ca).lerp(v.cb, t));
@@ -236,12 +244,15 @@ let u = reduceMotion ? 0 : 1, goal = u, touched = false, clock = 0, last = perfo
 function view(k) {
   const az = rad(22) * (1 - k), el = rad(33 + 56.9 * k), fit = Math.cos(az) + Math.sin(az);
   const needW = 2 * half * fit * 1.04, needH = 2 * half * fit * Math.sin(el) * 1.02 + 13 * Math.cos(el) + 2;
-  const w = stage.clientWidth || 1, h = stage.clientHeight || 1, vh = Math.max(needH, needW * h / w) * (1 - 0.1 * (1 - k));
+  const w = stage.clientWidth || 1, h = stage.clientHeight || 1, vh = Math.max(needH, needW * h / w) * (1 - 0.1 * (1 - k)) * (1 - 0.06 * Math.sin(Math.PI * k));
   cam.left = -vh * w / h / 2; cam.right = vh * w / h / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
   const ty = 4.6 * (1 - k);
   cam.position.set(100 * Math.cos(el) * Math.sin(az), ty + 100 * Math.sin(el), 100 * Math.cos(el) * Math.cos(az));
   cam.lookAt(0, ty, 0);
 }
+const fadeScene = new THREE.Scene(), fadeCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);   // bewegingsonscherpte: een deels doorzichtig vlak in de achtergrondkleur laat sporen achter
+const fadeMat = new THREE.MeshBasicMaterial({ color: 0xf5f3f1, transparent: true, opacity: 0.42, depthTest: false, depthWrite: false });
+fadeScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), fadeMat));
 function resize() { renderer.setSize(stage.clientWidth, stage.clientHeight, false); lastP = -1; }
 new ResizeObserver(resize).observe(stage); resize();
 
@@ -251,11 +262,14 @@ stage.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ")
 
 function frame(now) {
   const dt = Math.min(0.3, (now - last) / 1000); last = now;
-  if (u !== goal) u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 1.8));
-  if (u !== lastP) { if (mesh) morph(u); view(ss((u - 0.35) / 0.65)); lastP = u; }
+  const moving = u !== goal;
+  if (moving) u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 0.65));
+  if (u !== lastP) { if (mesh) morph(u); view(1 - Math.pow(1 - u, 2.2)); lastP = u; }
   if (!reduceMotion) clock += dt;
   const ph = (clock % 5) / 5;            // lichtstreep over het logo
   glint.position.x = -20 + 40 * ph; glint.intensity = u < 0.4 ? 1.6 * Math.sin(Math.PI * ph) * (1 - u / 0.4) : 0;
+  renderer.clearDepth();
+  if (moving && !reduceMotion) renderer.render(fadeScene, fadeCam); else renderer.clearColor();
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
