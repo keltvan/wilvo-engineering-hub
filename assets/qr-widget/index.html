@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WILVO | QR-machine</title>
-<!-- De EUV-lichtbron (voxelmodel, of ?v=gears voor tandwielen) op een staalplaat; de plaat is de QR-code. Tik: de machine zakt weg en de QR blijft.
+<!-- Een lasergesneden stalen plaat (de QR-code) waaruit de EUV-lichtbron (voxelmodel, of ?v=gears voor tandwielen) omhoog komt. Tik: de machine zakt weg en de QR blijft.
      Eigen QR-encoder (bytemodus, correctieniveau M, versie 1-10), alleen three.js uit ../../vendor.
      ?u=<adres> verandert de QR (standaard de Engineering Hub), ?f=0|1|2 kiest de afwerking. -->
 <style>
@@ -135,9 +135,9 @@ const params = new URLSearchParams(location.search);
 const HUB = "https://keltvan.github.io/wilvo-engineering-hub/";
 const target = (params.get("u") || HUB).slice(0, 200);
 const FINISH = [
-  { gearA: "#9fb3bd", gearB: "#e0262e", vessel: "#7d95a3", accent: "#e0262e", dark: "#2c3438", light: "#e6eef1" }, // staal + WILVO-rood
-  { gearA: "#e0262e", gearB: "#a7c2ce", vessel: "#e0262e", accent: "#a7c2ce", dark: "#3a1519", light: "#f1e9e7" }, // rood gepoedercoat
-  { gearA: "#d3d8db", gearB: "#6f96a6", vessel: "#d3d8db", accent: "#4f7f95", dark: "#3d4a52", light: "#eef2f3" }  // zink
+  { gearA: "#9fb3bd", gearB: "#e0262e", vessel: "#7d95a3", accent: "#e0262e", tray: "#8da0ab", dark: "#2c3438", light: "#e6eef1" }, // staal + WILVO-rood
+  { gearA: "#e0262e", gearB: "#a7c2ce", vessel: "#e0262e", accent: "#a7c2ce", tray: "#e0262e", dark: "#3a1519", light: "#f1e9e7" }, // rood gepoedercoat
+  { gearA: "#d3d8db", gearB: "#6f96a6", vessel: "#d3d8db", accent: "#4f7f95", tray: "#c3cacf", dark: "#3d4a52", light: "#eef2f3" }  // zink
 ];
 let finish = Math.min(2, Math.max(0, +params.get("f") || 0));
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -189,19 +189,55 @@ const mat = new THREE.MeshLambertMaterial();
 const jitter = () => 0.93 + rand() * 0.1;
 const tint = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 
-// Staalplaat: lage plaat in de lichte kleur, de donkere QR-modules staan als reliëf erop.
-const slab = new THREE.Mesh(new THREE.BoxGeometry(S + 4, 0.5, S + 4), new THREE.MeshLambertMaterial());
+// Plaatwerk, waar WILVO om bekend staat: een lasergesneden stalen plaat met opgezette randen (een bak). De donkere
+// QR-modules zijn uitsnijdingen waar de donkere bodemplaat doorheen schijnt; de lichte modules en de rand zijn de plaat zelf.
+const N = S + 4, slab = new THREE.Mesh(new THREE.BoxGeometry(N, 0.5, N), new THREE.MeshLambertMaterial());
 slab.position.y = -0.25; slab.receiveShadow = true; scene.add(slab);
+const trayMat = new THREE.MeshLambertMaterial();
+[[0, N / 2 + 0.25, N + 1, 0.5], [0, -N / 2 - 0.25, N + 1, 0.5], [N / 2 + 0.25, 0, 0.5, N], [-N / 2 - 0.25, 0, 0.5, N]].forEach(([x, z, w, d]) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.5, d), trayMat); m.position.set(x, -0.25, z); m.castShadow = m.receiveShadow = true; scene.add(m);
+});
 const mods = [];
-for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) mods.push({ x: x - S / 2 + 0.5, z: y - S / 2 + 0.5, dark: qr.dark(x, y), j: jitter() });
-const plate = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, mods.length);
+for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+  const qx = x - 2, qy = y - 2, hole = qx >= 0 && qy >= 0 && qx < S && qy < S && qr.dark(qx, qy);
+  mods.push({ x: x - N / 2 + 0.5, z: y - N / 2 + 0.5, hole, o: y * N + (y % 2 ? N - 1 - x : x), j: jitter() });
+}
+const plate = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.5, 1), mat, mods.length);
 plate.receiveShadow = plate.castShadow = true; scene.add(plate);
-function flatten(k) { // in de QR-stand ligt het reliëf (bijna) plat: geen schaduwranden in de code
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3(1, 1, 1);
-  mods.forEach((o, i) => { const h = (o.dark ? 0.8 : 0.3) * (1 - 0.92 * k); sc.y = h; pos.set(o.x, h / 2, o.z); m.compose(pos, q, sc); plate.setMatrixAt(i, m); });
+function cutTo(p) { // p 0..1: hoeveel van de plaat de laser al gesneden heeft (regel voor regel, heen en terug)
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3(), lim = p * N * N;
+  mods.forEach((o, i) => { sc.setScalar(o.hole && o.o < lim ? 1e-4 : 1); pos.set(o.x, 0.25, o.z); m.compose(pos, q, sc); plate.setMatrixAt(i, m); });
   plate.instanceMatrix.needsUpdate = true;
 }
-flatten(0);
+cutTo(0);
+
+// Lasersnijkop op een portaal: loopt over de plaat, de straal snijdt, vonken spatten weg
+const laser = new THREE.Group(); laser.visible = false; scene.add(laser);
+const lm = (g, c) => { const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: c })); m.castShadow = true; return m; };
+const rail = lm(new THREE.BoxGeometry(N + 4, 0.3, 0.4), 0x59656b); rail.position.y = 5.2; laser.add(rail);
+for (const sx of [-1, 1]) { const leg = lm(new THREE.BoxGeometry(0.4, 6.4, 0.4), 0x59656b); leg.position.set(sx * (N / 2 + 1.8), 2.0, 0); laser.add(leg); }
+const head = new THREE.Group(); laser.add(head);
+const body = lm(new THREE.BoxGeometry(1.5, 1.2, 1.1), 0xaeb9bf); body.position.y = 4.4; head.add(body);
+const nozzle = lm(new THREE.CylinderGeometry(0.08, 0.38, 0.9, 16), 0xe0262e); nozzle.position.y = 3.45; head.add(nozzle);
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 3.0, 8), new THREE.MeshBasicMaterial({ color: 0xff5a3a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+beam.position.y = 1.95; head.add(beam);
+const NS = 70, sparks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }), NS);
+sparks.frustumCulled = false; scene.add(sparks);
+const sp = Array.from({ length: NS }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), l: 0 })); let spN = 0;
+function laserTick(dt, p) {
+  const on = p > 0 && p < 1; laser.visible = on;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+  if (on) {
+    const row = p * N, r = Math.min(N - 1, Math.floor(row)), f = row - r;
+    laser.position.z = r - N / 2 + 0.5; head.position.x = ((r % 2 ? 1 - f : f) * N) - N / 2;
+    for (let k = 0; k < 2; k++) { const q2 = sp[spN++ % NS]; q2.p.set(head.position.x, 0.55, laser.position.z); q2.v.set((Math.random() - 0.5) * 3, 2 + Math.random() * 3.5, (Math.random() - 0.5) * 3); q2.l = 0.55; }
+  }
+  sp.forEach((q2, i) => {
+    q2.l -= dt; q2.p.addScaledVector(q2.v, dt); q2.v.y -= 14 * dt; if (q2.p.y < 0.5) { q2.p.y = 0.5; q2.v.y *= -0.3; }
+    sc.setScalar(Math.max(q2.l, 0) / 0.55 + 1e-4); m.compose(q2.p, q, sc); sparks.setMatrixAt(i, m);
+  });
+  sparks.instanceMatrix.needsUpdate = true;
+}
 
 // Voxelgroep: InstancedMesh met een eigen val-animatie per kubusje.
 const CUBE = new THREE.BoxGeometry(0.5, 0.5, 0.5);
@@ -389,8 +425,8 @@ const visual = params.get("v") === "gears" ? gearsVisual() : machineVisual();
 function recolor() {
   const f = FINISH[finish], c = new THREE.Color();
   renderer.setClearColor(0xf5f3f1);
-  slab.material.color.set(f.light);
-  mods.forEach((o, i) => plate.setColorAt(i, c.set(o.dark ? f.dark : f.light).multiplyScalar(o.j)));
+  slab.material.color.set(f.dark); trayMat.color.set(f.tray);
+  mods.forEach((o, i) => plate.setColorAt(i, c.set(f.light).multiplyScalar(o.j)));
   plate.instanceColor.needsUpdate = true;
   visual.recolor(f, c);
 }
@@ -399,7 +435,7 @@ recolor();
 // ---------- Beweging en camera ----------
 const ss = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
 const rad = d => d * Math.PI / 180;
-let u = 0, goal = 0, spin = 0, last = performance.now();
+let u = reduceMotion ? 0 : 1, goal = u, spin = 0, last = performance.now(), cutP = reduceMotion ? 1 : 0;
 function view(k) {
   const az = rad(visual.az) * (1 - k), el = rad(33 + 56.9 * k), fit = Math.cos(az) + Math.sin(az);
   const needW = 2 * half * fit * 1.04, needH = 2 * half * fit * Math.sin(el) * 1.02 + visual.fitH * Math.cos(el) + 2;
@@ -412,7 +448,10 @@ function view(k) {
 function resize() { renderer.setSize(stage.clientWidth, stage.clientHeight, false); lastP = -1; }
 new ResizeObserver(resize).observe(stage); resize();
 
+function endIntro() { goal = 0; stage.setAttribute("aria-pressed", "false"); hint.textContent = "Tik voor de QR-code"; }
+if (cutP < 1) hint.textContent = "De laser snijdt de QR-code…";
 function toggle() {
+  if (cutP < 1) { cutP = 1; cutTo(1); endIntro(); return; }
   goal = goal ? 0 : 1;
   stage.setAttribute("aria-pressed", goal ? "true" : "false");
   hint.textContent = goal ? "Scan mij · tik om terug te gaan" : "Tik voor de QR-code";
@@ -428,8 +467,10 @@ document.querySelectorAll("#bar button").forEach((b, i) => b.setAttribute("aria-
 let clock = 0;
 function frame(now) {
   const dt = Math.min(0.3, (now - last) / 1000); last = now;
+  if (cutP < 1) { cutP = Math.min(1, cutP + dt / 3.5); cutTo(cutP); if (cutP === 1) endIntro(); }
+  laserTick(dt, cutP);
   if (u !== goal) { u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 1.5)); }
-  if (u !== lastP) { const k = ss((u - 0.3) / 0.7); visual.vox.forEach(v => fall(v, u)); view(k); flatten(k); lastP = u; }
+  if (u !== lastP) { const k = ss((u - 0.3) / 0.7); visual.vox.forEach(v => fall(v, u)); view(k); lastP = u; }
   if (!reduceMotion) clock += dt;
   visual.tick(dt, u, reduceMotion ? 0.1 : clock);
   renderer.render(scene, cam);
