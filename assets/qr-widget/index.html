@@ -14,7 +14,6 @@ html, body { margin: 0; height: 100%; background: var(--warm); overflow: hidden;
 #stage { position: absolute; inset: 0; cursor: pointer; outline-offset: -3px; }
 #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #stage:focus-visible { outline: 3px solid var(--red-ink); }
-#owl { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; will-change: transform; display: none; filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff) drop-shadow(0 9px 8px rgba(10,18,32,.28)); }
 #flat { display: none; margin: auto; max-width: 90%; max-height: 90%; image-rendering: pixelated; }
 </style>
 </head>
@@ -189,8 +188,31 @@ ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; ground.receiveShado
 // Logo en QR zijn dezelfde blokjes. Logo-stand: het WILVO-logo (../wilvo-logo.svg, ongewijzigd, met slogan) in een frame: rode poedercoatrand met
 // een dun donker inlegstreepje, bevestigingsgaten, klinknagels en geponste gaten die naar het logo toe kleiner worden. Blokjes die in logo én QR
 // op dezelfde plek zitten blijven staan; de overige stromen naar de dichtstbijzijnde QR-plek (of krimpen weg / groeien aan).
-const COL = { red: "#e0262e", ink: "#0a1220", steel: "#aeb9bf" }, QRC = "#0b1320", WHITE = new THREE.Color(1, 1, 1);
+const COL = { red: "#e0262e", ink: "#0a1220", steel: "#aeb9bf", owlInk: "#0a1220", owlFill: "#f3efe6" }, QRC = "#0b1320", WHITE = new THREE.Color(1, 1, 1);
 let items = [], mesh = null, lastP = -1, idleIdx = [];
+// De WILVO-uil zit op de bovenkant van het logo (de rode balk), rechts van het midden, en is van dezelfde blokjes gemaakt als het logo, zodat hij mee naar de QR morpht.
+const OWL_D = "M226.1,10.5c-.2-.4-.6-.6-1.1-.5l-26.7,5.5c-.2,0-.4.1-.5.3l-8.8,9.5-18.5-2.6c0,0-.2,0-.3,0l-18.5,2.6-8.8-9.5c-.1-.2-.3-.3-.5-.3l-26.7-5.5c-.5-.1-1.1.2-1.2.8,0,.3,0,.6.2.9l9,10.1-1.4,2.9c-.2.4,0,1,.3,1.2l8.4,6.2-9.3,12.1c0,.1-.2.3-.2.4l-4.9,24.8s0,0,0,0c0,0,0,.1,0,.2,0,0,0,0,0,.1l.8,4.6-12.4,25.2-33.6,24.5c-.1,0-.2.2-.3.4l-24.8,50.7-21.8,58.5L.2,265.7c-.3.4-.2,1.1.2,1.4.3.2.6.3.9.1l27.4-10-25.1,46.2c-.3.5,0,1.1.4,1.4.2.1.5.2.8,0l18-6.3c.2,0,.4-.2.5-.4l15-20.4,50.4-39.5,7.5,8.1c.3.3.8.4,1.2.2l8.6-4.8,12.8,15.5-6.8,2.7c-.2.1-.4.3-.5.5l-4.3,10.2c-.2.5,0,1.1.5,1.3.3.1.6.1.9,0l7.8-4.5,4.7-.4-1.5,3.6c-.2.5,0,1.1.5,1.3.3.1.6.1.9,0l7.8-4.5,19.1-1.5,41.4,4.7,8.5,6.2c.4.3.9.3,1.2,0,.4-.3.5-.8.3-1.2l-5.3-11.5c0-.2-.3-.4-.5-.5l-7.1-3.3s0,0,0,0h0s0,0,0,0l-30.8-9.3-17.7-25.1,6.7-2c.2,0,.4-.2.5-.3l13.5-17.2,28.7-29.4,24.3-29.4s0,0,0-.1c0,0,0,0,0,0,0,0,0,0,0,0h0c0,0,0-.1,0-.2l6.1-35.4,4.2-18.4c.2-.3.3-.7.2-1l1.9-22.6s0,0,0-.1c0,0,0,0,0-.1,0,0,0,0,0,0l-4.9-24.8c0-.2,0-.3-.2-.4l-9.3-12.1,8.4-6.2c.4-.3.5-.8.3-1.2l-1.4-2.9,9-10.1c.3-.3.3-.8.1-1.2h0ZM170.4,24.7l18.5,2.6,4.9,5.7-23.4,8-23.4-8,4.9-5.7,18.5-2.6h0ZM185.9,175.6l-34.9,23.2c2.4-10.8,8.3-44.9,9.3-50.9h48.4l-22.8,27.6h0ZM78.6,202.3l65.6-83.6,13.9,27.9-19.4,11.7-60.2,44h0ZM47.6,177.5l24.3,29.6-44.6,24.9,20.3-54.5h0ZM144.6,81.4h0s9.7-4.7,9.7-4.7l15.6,8.5c0,0,.1,0,.2,0,0,0,0,0,0,0,0,0,.2,0,.3,0h0c0,0,.2,0,.3,0,0,0,0,0,0,0,0,0,.1,0,.2,0l15.6-8.5,9.7,4.7h0s10,4.9,10,4.9l-36.5,8.4c-1.9-.4-19.5-5.6-32.5-9.4l7.6-3.9ZM119.3,73.5l-.7-3.8,11.3-20.2-1,12.5s0,0,0,0c0,0,0,.1,0,.2,0,0,0,.1,0,.2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,.1l8.7,10.4-18.5.3h0ZM185.2,52.3l1.8,2.4c.2.3.6.5,1,.4l4.7-1.1c.4,0,.6-.4.7-.7l.9-3.3,2.5-.6-1.1,6-10.1,3-3.8-5,.2-.2,3.2-.8ZM187.3,51.8l4.8-1.2-.5,1.6-3.4.8-.9-1.2h0ZM204.9,47.3l-2.6,10.5-8.7,7.5-17,1.3,4.2-11.2,3.6,4.7c.3.3.7.5,1.1.3l11.3-3.4c.4-.1.6-.4.7-.8l1.4-7.5s6-1.5,6-1.5ZM186.6,74.6l-8.6-6,15.6-1.2,5.2,6.1-12.1,1.2h0ZM170.4,83.2l-14.1-7.7,8.8-6.2,4.3,11.6s0,0,0,0c0,0,0,0,0,0,0,0,0,.1.1.2,0,0,.2.2.3.2,0,0,0,0,0,0,0,0,0,0,0,0,.1,0,.2,0,.3,0h0c.1,0,.2,0,.3,0,0,0,0,0,0,0,0,0,0,0,0,0,.1,0,.2-.1.3-.2,0,0,0-.1.1-.2,0,0,0,0,0,0,0,0,0,0,0,0l4.3-11.5,8.9,6.2-14.1,7.7h0ZM147.1,65.3l-8.7-7.5-2.6-10.5,6,1.5,1.4,7.5c0,.4.3.7.7.8l11.3,3.4c.4.1.8,0,1.1-.3l3.6-4.7,4.2,11.2s-17-1.3-17-1.3ZM133.6,46.7l2.8,11.1-5.3,2.7,1.2-14.1,1.4.3h0ZM146.4,50l.9,3.3c0,.3.4.6.7.7l4.7,1.1c.4,0,.8,0,1-.4l1.8-2.4,3.3.8.2.2-3.8,5-10.1-3-1.1-6,2.5.6h0ZM148.6,50.6l4.8,1.2-.9,1.2-3.4-.8-.5-1.6h0ZM169.8,60.4h0s0,0,.2,0c0,0,0,0,0,0,0,0,.1,0,.2,0,0,0,0,0,0,0s0,0,0,0c0,0,.1,0,.2,0,0,0,0,0,.1,0,0,0,0,0,.1,0h0s0,0,0,0l7.7-4.6-8.2,21.9-8.2-21.9,7.7,4.6h0ZM200.8,72.6l-5.4-6.2,7.9-6.8,5.9,2.9-8.5,10.1h0ZM204.3,57.8l2.8-11.1,1.4-.3,1.2,14.1-5.3-2.7h0ZM180.5,51.8l-8.4-9.4,20.6-7-12.3,16.4h0ZM179,53.2l-7.6,4.6v-13.1s7.6,8.5,7.6,8.5ZM169.4,57.7l-7.6-4.6,7.6-8.5v13.1ZM160.2,51.8l-12.3-16.4,20.6,7-8.4,9.4h0ZM145.1,34.9l11.8,15.7-1.5-.4h0s-7.6-2-7.6-2c-.2-.2-.5-.2-.8-.2l-4.1-1.1h0s-9.4-2.4-9.4-2.4l11.6-9.7h0ZM131.5,62.5l5.9-2.9,7.9,6.8-5.4,6.2-8.5-10.1h0ZM147.1,67.3l15.6,1.2-8.6,6.1-12.1-1.2,5.2-6.1h0ZM178.9,109.5l-7.1-12.1c4.8,1.7,16.1,6,25,9.5,0,0-17.9,2.5-17.9,2.5ZM169.4,97.3l7.8,13.3-17.7,34.2-13.8-27.6s23.7-19.9,23.7-19.9ZM48.7,175.8l91.6-55.3-67,85.3-24.6-30h0ZM161.1,146l17.9-34.5,21-3,9.5,37.5h-48.4ZM200.6,106.3c-8.4-3.3-20.9-8.2-27.1-10.4l35.5-8.2,10.3,5-18.6,13.6h0ZM220.3,91l-23.3-11.4h0s0,0,0,0l-6.9-3.3,10.8-1.1,20.9-.8-1.4,16.6h0ZM221.9,72.4l-18.9.7,8.6-10.3s0,0,0-.1c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0-.1,0-.2,0,0,0-.1,0-.2,0,0,0,0,0,0l-1-12.5,11.3,20.2-.2,2.6h0ZM197.9,47s0,0,0,0l-4.1,1.1c-.3,0-.5,0-.8.2l-7.6,1.9h0s-1.5.4-1.5.4l11.8-15.7,11.6,9.7-9.4,2.4h0ZM118.3,12.5l23.4,4.8,6.9,7.4-23.1-4.2-7.2-8.1h0ZM125.5,22.7l23.9,4.3-4.6,5.4-12-1.5-8.3-6.1,1-2.1h0ZM123.4,45.2l9.5-12.3,10,1.2-12.2,10.2s0,0,0,0c0,0-.2.2-.2.3h0s0,0,0,0l-10.7,19,3.6-18.5h0ZM119.1,75.5l20.8-.3,10.8,1.1-6.9,3.3h0s0,0,0,0l-19.2,9.9-16.5,8.5,11.1-22.5h0ZM72.8,125.6l33.5-24.5,28.2-14.6c10.7,3.2,27.1,8,33,9.6l-23.6,19.8-94.2,56.9,23.2-47.3h0ZM26,235l42.7-23.8-38.4,43.5-26.4,9.6,22.2-29.3h0ZM21.8,296.9l-15.2,5.3,25.1-46.2,42.3-47.9,35.6-26.1-23.6,35-30.1,33.3s0,0,0,0l-34.1,46.4h0ZM42.7,272l14.9-20.3,28.5-31.6,1.6,16.6-45,35.3h0ZM97.1,244.7l-7.4-8-1.8-18.7,26.5-39.4,25.5-18.7,18.2-11c-1.6,9.3-7.9,45.6-9.6,51.7l-18.2,25.6-33.2,18.4ZM185.3,262.2l2.8,6.5-38.5-4.4,5.9-11.2,29.9,9h0ZM133.4,259.2l10.9,5.3-14,1.1,3.1-6.4h0ZM147.6,263.9l-14.1-6.8-15.5-18.7,35.5,14.1-6,11.4h0ZM107.8,241l6.8-3.8,16.7,20.2-3.7,1.5-6.5-2-13.2-16h0ZM113.2,261.9l5.2-2.1-3,6.3-5.2,3,3-7.1h0ZM117.8,265.6l3.2-6.5,3.6,1.1h0c-.2.1-.4.3-.5.6l-1.9,4.6-4.2.3h0ZM125.6,261.9l5.2-2.1-3,6.3-5.2,3,3-7.1ZM195.9,273.2l-5.4-3.9-2.5-5.9,4.4,2.1,3.5,7.7h0ZM152.2,249.8l-35.1-14,14.2-7.9,4.5-1.3,16.3,23.2ZM157.1,205.1s0,0,0,0l-13.3,17-10.2,3,16.6-23.4,29-19.4-22.1,22.6ZM215.9,111.3l-5.3,30.8-8.8-34.4,17.7-12.9-3.7,16.4h0ZM217.3,45.2l3.6,18.5-10.7-19c0-.1-.1-.2-.2-.3h0s-12.2-10.2-12.2-10.2l10-1.2,9.5,12.3h0ZM207.9,30.9l-12,1.5-4.6-5.4,23.9-4.3,1,2.1-8.3,6.1h0ZM215.2,20.6l-23.1,4.2,6.9-7.4,23.4-4.8-7.2,8.1h0Z";
+let PVN = [0, 0], PVL = [0, 0], PVR = [0, 0], OI = { head: 0, bob: 0, earL: 0, earR: 0, blink: 0 };
+const INKC = new THREE.Color("#0a1220"), bump = (c, w) => Math.abs(c) < w ? 0.5 * (1 + Math.cos(Math.PI * c / w)) : 0;
+const rot = (x, y, pv, deg) => { const a = deg * Math.PI / 180, dx = x - pv[0], dy = y - pv[1]; return [pv[0] + dx * Math.cos(a) - dy * Math.sin(a), pv[1] + dx * Math.sin(a) + dy * Math.cos(a)]; };
+function owlIdle(clock, idle) { // zacht, in een lus: de kop kantelt en ademt, af en toe trilt een oor, af en toe knippert hij
+  const cyc = (T, ph, w) => bump((clock % T) - ph, w), ear = cyc(5.9, 2.0, 0.28), side = Math.floor(clock / 5.9) % 2;
+  return { head: idle * (2.2 * Math.sin(clock * 0.55) + 3.5 * cyc(8.3, 5.2, 1.0)), bob: idle * 0.035 * Math.sin(clock * 1.7), earL: idle * (side === 0 ? 10 * ear : 0), earR: idle * (side === 1 ? -10 * ear : 0), blink: idle * cyc(4.3, 3.9, 0.09) };
+}
+function owlCells() {
+  const U = 8.6 / 263, sPx = 12 * U, OVS = 1 / 12, XC = 7, Y0 = N / 2 + LH * VS / 2 + 0.05;           // 8,6 eenheden hoog (ruim een kwart van het bord); een uilblokje is 1/12 eenheid
+  const OW = Math.ceil(226.2 * sPx) + 2, OH = Math.ceil(315 * sPx) + 2, c = document.createElement("canvas"); c.width = OW; c.height = OH;
+  const g = c.getContext("2d", { willReadFrequently: true }); g.scale(sPx, sPx);
+  g.fillStyle = "#fff"; g.fill(new Path2D(OWL_D.split(/(?=M)/)[0])); g.fillStyle = "#000"; g.fill(new Path2D(OWL_D));   // eerst de buitencontour wit, dan de lijnen
+  const px = g.getImageData(0, 0, OW, OH).data, toB = (sx, sy) => [XC + (sx - 152) * U, Y0 + (273 - sy) * U], cells = [];
+  PVN = toB(172, 108); PVL = toB(135, 33); PVR = toB(205, 28);                                           // nek, voet van het linker- en rechteroor
+  for (let py = 0; py < OH; py++) for (let qx = 0; qx < OW; qx++) {
+    const i = (py * OW + qx) * 4; if (px[i + 3] < 128) continue;
+    const key = (px[i] + px[i + 1] + px[i + 2]) / 3 < 170 ? "owlInk" : "owlFill", sx = (qx + 0.5) / sPx, sy = (py + 0.5) / sPx, [x, y] = toB(sx, sy);
+    cells.push({ x, y, key, layers: key === "owlInk" ? 3.8 : 3.4, size: OVS, own: { head: sy < 112, ear: sy < 33 ? (sx < 152 ? -1 : sx > 186 ? 1 : 0) : 0, eye: key === "owlFill" && sy > 44 && sy < 70 && ((sx > 129 && sx < 166) || (sx > 175 && sx < 207)) } });
+  }
+  return cells;
+}
 function assign(L, Q, axis, out) { // verdeel logo-blokjes L over QR-plekken Q: halveer Q, verdeel L naar rato, wissel van as
   if (!Q.length) { L.forEach(a => out.sink.push(a)); return; }
   if (!L.length) { Q.forEach(b => out.born.push(b)); return; }
@@ -234,12 +256,13 @@ function build(px, W, H) { // px: RGBA van het logo, getekend op W x H
     const ca = new THREE.Color(mode === 3 ? QRC : COL[a.key]).multiplyScalar(jit());
     const dist = Math.hypot(b.x - a.x, b.y - a.y), rd = Math.hypot((a.x + b.x) / 2, (a.y + b.y) / 2 - N / 2) / (N * 0.7);
     const la = mode === 3 ? 2 : a.layers, lb = mode === 2 ? a.layers : 2;
-    const v = { ax: a.x, ay: a.y, bx: b.x, by: b.y, mode, ca, la, lb, cb: mode === 2 ? ca : cb0.clone().multiplyScalar(0.96 + rand() * 0.07), delay: 0.25 * rd + 0.05 * rand(), lift: mode === 1 ? Math.min(1.2, 0.25 + 0.1 * dist) : 0, perf: mode < 3 ? a.perf : undefined, rivet: mode < 3 ? a.rivet : undefined };
-    if (v.perf || v.rivet !== undefined) idleIdx.push(items.length);
+    const v = { ax: a.x, ay: a.y, bx: b.x, by: b.y, mode, ca, la, lb, cb: mode === 2 ? ca : cb0.clone().multiplyScalar(0.96 + rand() * 0.07), delay: 0.25 * rd + 0.05 * rand(), lift: mode === 1 ? Math.min(1.2, 0.25 + 0.1 * dist) : 0, perf: mode < 3 ? a.perf : undefined, rivet: mode < 3 ? a.rivet : undefined, own: mode < 3 ? a.own : undefined, sa: a.size || VS, sb: mode === 2 ? a.size || VS : b.size || VS };
+    if (v.perf || v.rivet !== undefined || (v.own && v.own.head)) idleIdx.push(items.length);
     items.push(v);
   };
   logo.forEach((a, k) => { const b = qrc.get(k); if (b) item(a, b, 0); else Lr.push(a); });
   qrc.forEach((b, k) => { if (!logo.has(k)) Qr.push(b); });
+  owlCells().forEach(c => Lr.push(c));
   assign(Lr, Qr, 0, out);
   out.pair.forEach(([a, b]) => item(a, b, 1)); out.sink.forEach(a => item(a, a, 2)); out.born.forEach(b => item(b, b, 3));
   mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.08 }), items.length);
@@ -253,13 +276,17 @@ function setItem(v, i, p, clock, idle) { // p 0 = logo, 1 = QR; idle 0..1: de za
   mC.copy(v.ca).lerp(v.cb, t);
   if (idle > 0 && t === 0) {
     if (v.perf) { const f = 1 + 0.2 * idle * Math.sin(clock * 1.5 - v.perf.pr * 0.8); x = v.perf.cx + (x - v.perf.cx) * f; y = v.perf.cy + (y - v.perf.cy) * f; s *= f; }   // gaten ademen in een golf
-    if (v.rivet !== undefined) { const pl = Math.pow(Math.max(0, Math.cos((v.rivet - clock / 6) * 2 * Math.PI)), 10) * idle; mC.lerp(WHITE, 0.85 * pl); depth += 1.2 * pl; }       // het licht loopt langs de klinknagels
+    if (v.rivet !== undefined) { const pl = Math.pow(Math.max(0, Math.cos((v.rivet - clock / 6) * 2 * Math.PI)), 10) * idle; mC.lerp(WHITE, 0.85 * pl); depth += 1.2 * pl; }
+    if (v.own) {                                                                                        // de uil op zijn stok: kop kantelt en ademt, oren trillen, ogen knipperen
+      if (v.own.eye) mC.lerp(INKC, OI.blink);
+      if (v.own.head) { let q = [x, y]; if (v.own.ear) q = rot(q[0], q[1], v.own.ear < 0 ? PVL : PVR, v.own.ear < 0 ? OI.earL : OI.earR); q = rot(q[0], q[1], PVN, OI.head); x = q[0]; y = q[1] + OI.bob; }
+    }       // het licht loopt langs de klinknagels
   }
   s = Math.max(s, 1e-4); const d = Math.max(depth * VS * s, 1e-4);
-  mP.set(x, y, d / 2 + v.lift * Math.sin(Math.PI * t)); mS.set(VS * s, VS * s, d); mM.compose(mP, mQ, mS); mesh.setMatrixAt(i, mM); mesh.setColorAt(i, mC);
+  mP.set(x, y, d / 2 + v.lift * Math.sin(Math.PI * t)); mS.set(lerp(v.sa, v.sb, t) * s, lerp(v.sa, v.sb, t) * s, d); mM.compose(mP, mQ, mS); mesh.setMatrixAt(i, mM); mesh.setColorAt(i, mC);
 }
-function morph(p, clock, idle) { items.forEach((v, i) => setItem(v, i, p, clock, idle)); mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
-function idleTick(clock) { idleIdx.forEach(i => setItem(items[i], i, 0, clock, 1)); mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
+function morph(p, clock, idle) { OI = owlIdle(clock, idle); items.forEach((v, i) => setItem(v, i, p, clock, idle)); mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
+function idleTick(clock) { OI = owlIdle(clock, 1); idleIdx.forEach(i => setItem(items[i], i, 0, clock, 1)); mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
 const LW = 176, LH = Math.round(LW * 136.565 / 291.164);        // het logo op ware verhouding, 29 eenheden breed
 const cv = document.createElement("canvas"); cv.width = LW; cv.height = LH; const g2 = cv.getContext("2d", { willReadFrequently: true });
 const img = new Image();
@@ -270,78 +297,6 @@ img.onerror = () => { // zonder logobestand: een eenvoudig bord in dezelfde kleu
   build(g2.getImageData(0, 0, LW, LH).data, LW, LH);
 };
 img.src = "../wilvo-logo.svg";
-
-// ---------- De WILVO-uil: vliegt over het logo als de muis erop komt ----------
-const OWL_D = "M226.1,10.5c-.2-.4-.6-.6-1.1-.5l-26.7,5.5c-.2,0-.4.1-.5.3l-8.8,9.5-18.5-2.6c0,0-.2,0-.3,0l-18.5,2.6-8.8-9.5c-.1-.2-.3-.3-.5-.3l-26.7-5.5c-.5-.1-1.1.2-1.2.8,0,.3,0,.6.2.9l9,10.1-1.4,2.9c-.2.4,0,1,.3,1.2l8.4,6.2-9.3,12.1c0,.1-.2.3-.2.4l-4.9,24.8s0,0,0,0c0,0,0,.1,0,.2,0,0,0,0,0,.1l.8,4.6-12.4,25.2-33.6,24.5c-.1,0-.2.2-.3.4l-24.8,50.7-21.8,58.5L.2,265.7c-.3.4-.2,1.1.2,1.4.3.2.6.3.9.1l27.4-10-25.1,46.2c-.3.5,0,1.1.4,1.4.2.1.5.2.8,0l18-6.3c.2,0,.4-.2.5-.4l15-20.4,50.4-39.5,7.5,8.1c.3.3.8.4,1.2.2l8.6-4.8,12.8,15.5-6.8,2.7c-.2.1-.4.3-.5.5l-4.3,10.2c-.2.5,0,1.1.5,1.3.3.1.6.1.9,0l7.8-4.5,4.7-.4-1.5,3.6c-.2.5,0,1.1.5,1.3.3.1.6.1.9,0l7.8-4.5,19.1-1.5,41.4,4.7,8.5,6.2c.4.3.9.3,1.2,0,.4-.3.5-.8.3-1.2l-5.3-11.5c0-.2-.3-.4-.5-.5l-7.1-3.3s0,0,0,0h0s0,0,0,0l-30.8-9.3-17.7-25.1,6.7-2c.2,0,.4-.2.5-.3l13.5-17.2,28.7-29.4,24.3-29.4s0,0,0-.1c0,0,0,0,0,0,0,0,0,0,0,0h0c0,0,0-.1,0-.2l6.1-35.4,4.2-18.4c.2-.3.3-.7.2-1l1.9-22.6s0,0,0-.1c0,0,0,0,0-.1,0,0,0,0,0,0l-4.9-24.8c0-.2,0-.3-.2-.4l-9.3-12.1,8.4-6.2c.4-.3.5-.8.3-1.2l-1.4-2.9,9-10.1c.3-.3.3-.8.1-1.2h0ZM170.4,24.7l18.5,2.6,4.9,5.7-23.4,8-23.4-8,4.9-5.7,18.5-2.6h0ZM185.9,175.6l-34.9,23.2c2.4-10.8,8.3-44.9,9.3-50.9h48.4l-22.8,27.6h0ZM78.6,202.3l65.6-83.6,13.9,27.9-19.4,11.7-60.2,44h0ZM47.6,177.5l24.3,29.6-44.6,24.9,20.3-54.5h0ZM144.6,81.4h0s9.7-4.7,9.7-4.7l15.6,8.5c0,0,.1,0,.2,0,0,0,0,0,0,0,0,0,.2,0,.3,0h0c0,0,.2,0,.3,0,0,0,0,0,0,0,0,0,.1,0,.2,0l15.6-8.5,9.7,4.7h0s10,4.9,10,4.9l-36.5,8.4c-1.9-.4-19.5-5.6-32.5-9.4l7.6-3.9ZM119.3,73.5l-.7-3.8,11.3-20.2-1,12.5s0,0,0,0c0,0,0,.1,0,.2,0,0,0,.1,0,.2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,.1l8.7,10.4-18.5.3h0ZM185.2,52.3l1.8,2.4c.2.3.6.5,1,.4l4.7-1.1c.4,0,.6-.4.7-.7l.9-3.3,2.5-.6-1.1,6-10.1,3-3.8-5,.2-.2,3.2-.8ZM187.3,51.8l4.8-1.2-.5,1.6-3.4.8-.9-1.2h0ZM204.9,47.3l-2.6,10.5-8.7,7.5-17,1.3,4.2-11.2,3.6,4.7c.3.3.7.5,1.1.3l11.3-3.4c.4-.1.6-.4.7-.8l1.4-7.5s6-1.5,6-1.5ZM186.6,74.6l-8.6-6,15.6-1.2,5.2,6.1-12.1,1.2h0ZM170.4,83.2l-14.1-7.7,8.8-6.2,4.3,11.6s0,0,0,0c0,0,0,0,0,0,0,0,0,.1.1.2,0,0,.2.2.3.2,0,0,0,0,0,0,0,0,0,0,0,0,.1,0,.2,0,.3,0h0c.1,0,.2,0,.3,0,0,0,0,0,0,0,0,0,0,0,0,0,.1,0,.2-.1.3-.2,0,0,0-.1.1-.2,0,0,0,0,0,0,0,0,0,0,0,0l4.3-11.5,8.9,6.2-14.1,7.7h0ZM147.1,65.3l-8.7-7.5-2.6-10.5,6,1.5,1.4,7.5c0,.4.3.7.7.8l11.3,3.4c.4.1.8,0,1.1-.3l3.6-4.7,4.2,11.2s-17-1.3-17-1.3ZM133.6,46.7l2.8,11.1-5.3,2.7,1.2-14.1,1.4.3h0ZM146.4,50l.9,3.3c0,.3.4.6.7.7l4.7,1.1c.4,0,.8,0,1-.4l1.8-2.4,3.3.8.2.2-3.8,5-10.1-3-1.1-6,2.5.6h0ZM148.6,50.6l4.8,1.2-.9,1.2-3.4-.8-.5-1.6h0ZM169.8,60.4h0s0,0,.2,0c0,0,0,0,0,0,0,0,.1,0,.2,0,0,0,0,0,0,0s0,0,0,0c0,0,.1,0,.2,0,0,0,0,0,.1,0,0,0,0,0,.1,0h0s0,0,0,0l7.7-4.6-8.2,21.9-8.2-21.9,7.7,4.6h0ZM200.8,72.6l-5.4-6.2,7.9-6.8,5.9,2.9-8.5,10.1h0ZM204.3,57.8l2.8-11.1,1.4-.3,1.2,14.1-5.3-2.7h0ZM180.5,51.8l-8.4-9.4,20.6-7-12.3,16.4h0ZM179,53.2l-7.6,4.6v-13.1s7.6,8.5,7.6,8.5ZM169.4,57.7l-7.6-4.6,7.6-8.5v13.1ZM160.2,51.8l-12.3-16.4,20.6,7-8.4,9.4h0ZM145.1,34.9l11.8,15.7-1.5-.4h0s-7.6-2-7.6-2c-.2-.2-.5-.2-.8-.2l-4.1-1.1h0s-9.4-2.4-9.4-2.4l11.6-9.7h0ZM131.5,62.5l5.9-2.9,7.9,6.8-5.4,6.2-8.5-10.1h0ZM147.1,67.3l15.6,1.2-8.6,6.1-12.1-1.2,5.2-6.1h0ZM178.9,109.5l-7.1-12.1c4.8,1.7,16.1,6,25,9.5,0,0-17.9,2.5-17.9,2.5ZM169.4,97.3l7.8,13.3-17.7,34.2-13.8-27.6s23.7-19.9,23.7-19.9ZM48.7,175.8l91.6-55.3-67,85.3-24.6-30h0ZM161.1,146l17.9-34.5,21-3,9.5,37.5h-48.4ZM200.6,106.3c-8.4-3.3-20.9-8.2-27.1-10.4l35.5-8.2,10.3,5-18.6,13.6h0ZM220.3,91l-23.3-11.4h0s0,0,0,0l-6.9-3.3,10.8-1.1,20.9-.8-1.4,16.6h0ZM221.9,72.4l-18.9.7,8.6-10.3s0,0,0-.1c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0-.1,0-.2,0,0,0-.1,0-.2,0,0,0,0,0,0l-1-12.5,11.3,20.2-.2,2.6h0ZM197.9,47s0,0,0,0l-4.1,1.1c-.3,0-.5,0-.8.2l-7.6,1.9h0s-1.5.4-1.5.4l11.8-15.7,11.6,9.7-9.4,2.4h0ZM118.3,12.5l23.4,4.8,6.9,7.4-23.1-4.2-7.2-8.1h0ZM125.5,22.7l23.9,4.3-4.6,5.4-12-1.5-8.3-6.1,1-2.1h0ZM123.4,45.2l9.5-12.3,10,1.2-12.2,10.2s0,0,0,0c0,0-.2.2-.2.3h0s0,0,0,0l-10.7,19,3.6-18.5h0ZM119.1,75.5l20.8-.3,10.8,1.1-6.9,3.3h0s0,0,0,0l-19.2,9.9-16.5,8.5,11.1-22.5h0ZM72.8,125.6l33.5-24.5,28.2-14.6c10.7,3.2,27.1,8,33,9.6l-23.6,19.8-94.2,56.9,23.2-47.3h0ZM26,235l42.7-23.8-38.4,43.5-26.4,9.6,22.2-29.3h0ZM21.8,296.9l-15.2,5.3,25.1-46.2,42.3-47.9,35.6-26.1-23.6,35-30.1,33.3s0,0,0,0l-34.1,46.4h0ZM42.7,272l14.9-20.3,28.5-31.6,1.6,16.6-45,35.3h0ZM97.1,244.7l-7.4-8-1.8-18.7,26.5-39.4,25.5-18.7,18.2-11c-1.6,9.3-7.9,45.6-9.6,51.7l-18.2,25.6-33.2,18.4ZM185.3,262.2l2.8,6.5-38.5-4.4,5.9-11.2,29.9,9h0ZM133.4,259.2l10.9,5.3-14,1.1,3.1-6.4h0ZM147.6,263.9l-14.1-6.8-15.5-18.7,35.5,14.1-6,11.4h0ZM107.8,241l6.8-3.8,16.7,20.2-3.7,1.5-6.5-2-13.2-16h0ZM113.2,261.9l5.2-2.1-3,6.3-5.2,3,3-7.1h0ZM117.8,265.6l3.2-6.5,3.6,1.1h0c-.2.1-.4.3-.5.6l-1.9,4.6-4.2.3h0ZM125.6,261.9l5.2-2.1-3,6.3-5.2,3,3-7.1ZM195.9,273.2l-5.4-3.9-2.5-5.9,4.4,2.1,3.5,7.7h0ZM152.2,249.8l-35.1-14,14.2-7.9,4.5-1.3,16.3,23.2ZM157.1,205.1s0,0,0,0l-13.3,17-10.2,3,16.6-23.4,29-19.4-22.1,22.6ZM215.9,111.3l-5.3,30.8-8.8-34.4,17.7-12.9-3.7,16.4h0ZM217.3,45.2l3.6,18.5-10.7-19c0-.1-.1-.2-.2-.3h0s-12.2-10.2-12.2-10.2l10-1.2,9.5,12.3h0ZM207.9,30.9l-12,1.5-4.6-5.4,23.9-4.3,1,2.1-8.3,6.1h0ZM215.2,20.6l-23.1,4.2,6.9-7.4,23.4-4.8-7.2,8.1h0Z";
-const owl = (() => {
-  const SUBS = OWL_D.split(/(?=M)/), FILL = "#f7f9fb", INK = "#0a1220";
-  const FOLDED = new Set([0, 37, 38, 28, 3, 4, 39, 40, 41]);                                           // deelpad 0 = buitencontour; de rest zijn facetten; de gevouwen vleugel laten we weg
-  const body = SUBS.map((_, k) => k).filter(k => !FOLDED.has(k)).map(k => '<path d="' + SUBS[k] + '"/>').join("");
-  const f1 = v => +v.toFixed(1), pt = p => f1(p[0]) + "," + f1(p[1]);
-  const poly = (pts, fill) => '<polygon points="' + pts.map(pt).join(" ") + '"' + (fill ? ' fill="' + fill + '"' : "") + '/>';
-  // de vleugel in eigen coördinaten (x naar buiten, y omlaag, voorrand boven): slagpennen als waaier vanaf de pols, armpennen, dekveren
-  const quill = (H, deg, L, w, off) => { const a = deg * Math.PI / 180, v = [Math.cos(a), Math.sin(a)], n = [-v[1], v[0]], at = (s, c) => [H[0] + v[0] * s + n[0] * c, H[1] + v[1] * s + n[1] * c];
-    return [at(off, w / 2), at(L * 0.72, w * 0.52), at(L, 0), at(L * 0.72, -w * 0.52), at(off, -w / 2)]; };
-  const HP = [150, 2];
-  const prim = [6, 17, 28, 39, 50, 61, 72].map((a, i) => poly(quill(HP, a, [92, 98, 100, 98, 92, 84, 74][i], 21, 14), i % 2 ? "#f3f6f9" : "#fbfcfd")).reverse().join("");
-  const sec = [0, 1, 2, 3, 4].map(j => poly(quill([120 - 24 * j, 8], 80 + 4 * j, [70, 74, 76, 74, 68][j], 25, 6), j % 2 ? "#eef2f6" : "#f6f8fa")).reverse().join("");
-  const LE = [[0, -26], [35, -44], [85, -50], [135, -44], [172, -26], [202, -6]], BT = [[190, 6], [150, 12], [110, 14], [70, 14], [30, 10], [0, 6]];
-  const cov = poly([...LE, ...BT]) + [[0, 5], [1, 4], [1, 5], [2, 3], [3, 2], [3, 1], [4, 0], [5, 0], [4, 1]].map(([a, b], i) => '<line x1="' + LE[Math.min(a, 5)][0] + '" y1="' + LE[Math.min(a, 5)][1] + '" x2="' + BT[b][0] + '" y2="' + BT[b][1] + '"/>').join("") +
-    poly([LE[1], LE[2], BT[4]], "#e9eef3") + poly([LE[3], LE[4], BT[1]], "#e9eef3");
-  const wing = '<g class="wa"><g class="wh">' + prim + '</g>' + sec + cov + '</g>';
-  const SR = [205, 128], AX = [0.2, -0.98], P0 = [172, 55];                                              // rechterschouder; lijfas (richting kop) en een punt erop
-  const al = Math.hypot(AX[0], AX[1]), ax = AX[0] / al, ay = AX[1] / al;
-  const m00 = 2 * ax * ax - 1, m01 = 2 * ax * ay, m11 = 2 * ay * ay - 1;                                // spiegeling om de lijfas: de linkervleugel
-  const ex = P0[0] - (m00 * P0[0] + m01 * P0[1]), ey = P0[1] - (m01 * P0[0] + m11 * P0[1]);
-  const wrap = document.createElement("div"); wrap.id = "owl"; stage.appendChild(wrap);
-  wrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-120 -160 700 600" width="700" height="600" overflow="visible" style="display:block">' +
-    '<g fill="' + FILL + '" stroke="' + INK + '" stroke-width="2.6" stroke-linejoin="round">' +
-    '<g transform="translate(' + SR[0] + " " + SR[1] + ')">' + wing + '</g>' +
-    '<g transform="matrix(' + [m00, m01, m01, m11, ex, ey].map(v => +v.toFixed(4)).join(" ") + ') translate(' + SR[0] + " " + SR[1] + ')">' + wing + '</g>' + body + '</g></svg>';
-  const was = wrap.querySelectorAll(".wa"), whs = wrap.querySelectorAll(".wh");
-  // theta: hoek van de vleugel om de schouder in graden (0 = horizontaal, positief = omhoog); beta: de slagpennen knikken om de pols (de punt blijft achter)
-  function setPose(theta, beta) {
-    was.forEach(el => el.setAttribute("transform", "rotate(" + (-theta).toFixed(2) + ")"));
-    whs.forEach(el => el.setAttribute("transform", "rotate(" + beta.toFixed(2) + " " + HP[0] + " " + HP[1] + ")"));
-  }
-  setPose(20, 0);
-  // vlucht: kort en snel
-  const DUR = 1.5, PATH = [[-0.2, 0.84], [0.1, 0.78], [0.3, 0.6], [0.5, 0.5], [0.7, 0.36], [0.9, 0.22], [1.22, 0.04]];
-  const cr = (a, b, c, d, t) => 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
-  const at = p => { const n = PATH.length - 1, f = clamp01(p) * n, i = Math.min(n - 1, Math.floor(f)), t = f - i, P = k => PATH[Math.max(0, Math.min(n, k))];
-    return [cr(P(i - 1)[0], P(i)[0], P(i + 1)[0], P(i + 2)[0], t), cr(P(i - 1)[1], P(i)[1], P(i + 1)[1], P(i + 2)[1], t)]; };
-  let t = -1, phase = 0, rot = 0, drops = [], lastF = 0;
-  function spawnFeather(x, y, s) { const el = document.createElement("div"); el.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;will-change:transform;opacity:0";
-    el.innerHTML = '<svg viewBox="0 0 20 60" width="' + 12 * s + '" height="' + 36 * s + '"><path d="M10 0 C20 14 20 40 10 60 C0 40 0 14 10 0Z" fill="' + FILL + '" stroke="' + INK + '" stroke-width="2"/><path d="M10 4 L10 56" stroke="' + INK + '" stroke-width="1.6"/></svg>';
-    stage.appendChild(el); drops.push({ el, x, y, age: 0, ph: Math.random() * 6, v: 0.7 + Math.random() * 0.5 }); }
-  const api = {
-    get flying() { return t >= 0; },
-    setPose,
-    start() { if (t >= 0) return; t = 0; phase = 0; lastF = 0; wrap.style.display = "block"; },
-    stop() { t = -1; wrap.style.display = "none"; },
-    update(dt, fade, w, h) {
-      drops = drops.filter(f => { f.age += dt; if (f.age > 1.8) { f.el.remove(); return false; } return true; });
-      drops.forEach(f => { const a = f.age, sway = Math.sin(a * 4 + f.ph); f.el.style.opacity = String(fade * Math.min(1, a * 6) * (1 - clamp01((a - 1.3) / 0.5)));
-        f.el.style.transform = "translate(" + (f.x + sway * 22 * f.v + a * 30) + "px," + (f.y + a * 110 * f.v) + "px) rotate(" + (sway * 55 + 20) + "deg)"; });
-      if (t < 0) return;
-      if (fade < 0.02) { api.stop(); return; }
-      t += dt; if (t >= DUR) { api.stop(); return; }
-      const p0 = t / DUR, p = lerp(p0, ss(p0), 0.25);
-      phase += dt * 2 * Math.PI * (p0 < 0.2 ? 8 : 6.5);                                                     // klapt zo'n 10 keer in anderhalve seconde
-      const s = Math.sin(phase), raw = clamp01(0.5 + 0.5 * (s + 0.3 * Math.sin(2 * phase)) / 1.3);          // snelle neerslag, tragere opslag
-      setPose(lerp(-38, 62, raw), 20 * Math.cos(phase));
-      const [x, y] = at(p), [x2, y2] = at(Math.min(1, p + 0.01)), ang = Math.atan2((y2 - y) * h, (x2 - x) * w) * 180 / Math.PI;
-      rot = lerp(rot, -12 + Math.max(-14, Math.min(14, (ang + 25) * 0.5)), Math.min(1, dt * 8));            // de uil vliegt op je af: rechtop, met een lichte bocht in de vliegrichting
-      const k = 0.26 * Math.min(w, h) / 315 * (0.7 + 0.5 * Math.pow(Math.sin(Math.PI * p), 0.8)), bob = -0.035 * 315 * k * Math.cos(phase - 0.3);
-      const px = x * w, py = y * h + 0.02 * h * Math.sin(2 * Math.PI * 1.1 * p) + bob;
-      wrap.style.opacity = String(fade);
-      wrap.style.transform = "translate(" + px + "px," + py + "px) rotate(" + (rot + 2.5 * Math.sin(phase)) + "deg) scale(" + k + ") translate(-245px,-325px)";   // (125,165) in uilcoördinaten, met viewBox-verschuiving (120,160)
-      if (t - lastF > 0.4) { lastF = t; if (p > 0.1 && p < 0.9) spawnFeather(px, py + 18 * k, 0.8 + Math.random() * 0.5); }
-    },
-    debug(theta, beta) { wrap.style.display = "block"; setPose(theta, beta); }   // alleen voor het beoordelen van de vleugelstanden
-  };
-  return api;
-})();
 
 // De lasergnoester: een kleine heldere vonk met staart die langs de rode rand loopt (bij het logo, niet bij de QR)
 const sparkGeo = new THREE.BoxGeometry(1, 1, 1), sparkMat = new THREE.MeshBasicMaterial({ color: 0xffa860, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -363,16 +318,8 @@ function view(k, aOff, eOff) { // van een zijaanzicht (het logo met zijn reliëf
 }
 function resize() { renderer.setSize(stage.clientWidth, stage.clientHeight, false); lastP = -1; }
 new ResizeObserver(resize).observe(stage); resize();
-const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), logoPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.3), hitP = new THREE.Vector3();
-let wasInside = false;
-function overLogo(e) {
-  const r = stage.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-  cam.updateMatrixWorld(); ray.setFromCamera(ndc, cam);
-  return !!ray.ray.intersectPlane(logoPlane, hitP) && Math.abs(hitP.x) <= LW * VS / 2 && Math.abs(hitP.y - N / 2) <= LH * VS / 2;
-}
-function hoverLogo(e) { const inside = overLogo(e); if (inside && !wasInside && !reduceMotion && u === 0 && goal === 0) owl.start(); wasInside = inside; }
-stage.addEventListener("pointermove", e => { if (e.pointerType === "mouse") { const r = stage.getBoundingClientRect(); tx = ((e.clientX - r.left) / r.width - 0.5) * 2; ty = ((e.clientY - r.top) / r.height - 0.5) * 2; hoverLogo(e); } });
-stage.addEventListener("pointerleave", () => { tx = ty = 0; wasInside = false; });
+stage.addEventListener("pointermove", e => { if (e.pointerType === "mouse") { const r = stage.getBoundingClientRect(); tx = ((e.clientX - r.left) / r.width - 0.5) * 2; ty = ((e.clientY - r.top) / r.height - 0.5) * 2; } });
+stage.addEventListener("pointerleave", () => { tx = ty = 0; });
 
 function toggle() { goal = goal ? 0 : 1; stage.setAttribute("aria-pressed", goal ? "true" : "false"); }
 stage.addEventListener("click", toggle);
@@ -383,8 +330,7 @@ function frame(now) {
   if (u !== goal) u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 1.8));
   if (!reduceMotion) clock += dt;
   sun.position.set(lerp(-12, 0, ss(u)), lerp(22, 2, ss(u)), lerp(36, 40, ss(u)));   // in de QR-stand komt het licht recht van voren: geen schaduwranden naast de modules
-  const idle = reduceMotion ? 0 : 1 - ss(u / 0.2);
-  owl.update(dt, idle, stage.clientWidth, stage.clientHeight);                    // de levende bewegingen trekken weg zodra de morph begint en komen terug in de logo-stand
+  const idle = reduceMotion ? 0 : 1 - ss(u / 0.2);                    // de levende bewegingen trekken weg zodra de morph begint en komen terug in de logo-stand
   if (mesh) { if (u !== lastP) { morph(u, clock, idle); lastP = u; } else if (idle > 0 && u === 0) idleTick(clock); }
   px += (tx - px) * Math.min(1, dt * 3); py += (ty - py) * Math.min(1, dt * 3);
   view(ss(u), idle * (4 * px + 0.9 * Math.sin(clock * 0.5)), idle * (-2 * py + 0.5 * Math.sin(clock * 0.37)));
