@@ -8,7 +8,7 @@
      tik: het logo morpht in de QR-code en terug, terwijl de camera van zijaanzicht naar recht van voren draait. Eigen QR-encoder (bytemodus, niveau M,
      versie 1-10), alleen three.js uit ../../vendor. ?u=<adres> verandert de QR (standaard de Engineering Hub). -->
 <style>
-:root { --warm: #f5f3f1; --red-ink: #c41f27; }
+:root { --warm: #eff3f6; --red-ink: #c41f27; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--warm); overflow: hidden; }
 #stage { position: absolute; inset: 0; cursor: pointer; outline-offset: -3px; }
@@ -151,7 +151,7 @@ if (!renderer) { // zonder WebGL: platte QR, zodat de tegel nooit leeg blijft
   throw new Error("WebGL niet beschikbaar: platte QR getoond");
 }
 renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
-renderer.setClearColor(0xf5f3f1);
+renderer.setClearColor(0xeff3f6);
 renderer.shadowMap.enabled = true;
 stage.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
@@ -172,15 +172,16 @@ const CH = 14, R2 = Math.SQRT1_2;                                    // afgesned
 const edge = (gx, gy) => Math.min(gx, gy, PX - 1 - gx, PX - 1 - gy, (gx + gy - CH) * R2, (PX - 1 - gx + gy - CH) * R2, (gx + PX - 1 - gy - CH) * R2, (PX - 1 - gx + PX - 1 - gy - CH) * R2);
 
 // Het bord: een staande plaat van geborsteld staal met afgesneden hoeken, vierkant als de QR-code met zijn stille rand (de QR-stand is alleen de QR).
+const BK = [0.9089, 0.9098, 0.9105];
 const brush = (() => { const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
-  for (let y = 0; y < 256; y++) { const l = 0.93 + 0.05 * (1 - y / 255) + (Math.sin(y * 12.9898) * 43758.5453 % 1) * 0.012; g.fillStyle = `rgb(${Math.round(240 * l)},${Math.round(243 * l)},${Math.round(244 * l)})`; g.fillRect(0, y, 256, 1); }
+  for (let y = 0; y < 256; y++) { const l = 1 + 0.015 * (1 - y / 255) + (Math.sin(y * 12.9898) * 43758.5453 % 1) * 0.008; g.fillStyle = `rgb(${Math.min(255, Math.round(239 * l * BK[0]))},${Math.min(255, Math.round(243 * l * BK[1]))},${Math.min(255, Math.round(246 * l * BK[2]))})`; g.fillRect(0, y, 256, 1); }
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / N, 1 / N); t.offset.set(0.5, 0); return t; })();
 const cu = CH * VS, shape = new THREE.Shape();
 shape.moveTo(-N / 2 + cu, 0); shape.lineTo(N / 2 - cu, 0); shape.lineTo(N / 2, cu); shape.lineTo(N / 2, N - cu); shape.lineTo(N / 2 - cu, N); shape.lineTo(-N / 2 + cu, N); shape.lineTo(-N / 2, N - cu); shape.lineTo(-N / 2, cu); shape.closePath();
 const boardGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.8, bevelEnabled: false }); boardGeo.translate(0, 0, -0.8);
 const board = new THREE.Mesh(boardGeo, new THREE.MeshStandardMaterial({ map: brush, roughness: 0.55, metalness: 0 }));
 board.castShadow = board.receiveShadow = true; scene.add(board);
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.ShadowMaterial({ opacity: 0.16 }));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.ShadowMaterial({ color: 0x2a3b52, opacity: 0.2 }));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; ground.receiveShadow = true; scene.add(ground);
 
 // Logo en QR zijn dezelfde blokjes. Logo-stand: het WILVO-logo (../wilvo-logo.svg, ongewijzigd, met slogan) in een frame: rode poedercoatrand met
