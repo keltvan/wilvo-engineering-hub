@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WILVO | QR-machine</title>
-<!-- Een lasergesneden stalen plaat (de QR-code) waaruit de EUV-lichtbron (voxelmodel, of ?v=gears voor tandwielen) omhoog komt. Tik: de machine zakt weg en de QR blijft.
+<title>WILVO | QR</title>
+<!-- Een lasergesneden stalen plaat (de QR-code) waaruit het WILVO-logo als staand plaatwerk omhoog komt (of ?v=gears voor tandwielen). Tik: het logo zakt weg en de QR blijft.
      Eigen QR-encoder (bytemodus, correctieniveau M, versie 1-10), alleen three.js uit ../../vendor.
      ?u=<adres> verandert de QR (standaard de Engineering Hub), ?f=0|1|2 kiest de afwerking. -->
 <style>
@@ -281,7 +281,7 @@ function pinCells({ r, y0, y1, head, delay }) {
   return cells;
 }
 
-// ---------- Beelden: de EUV-bron (standaard) of de tandwielen (?v=gears) ----------
+// ---------- Beelden: het WILVO-logo als plaatwerk (standaard) of de tandwielen (?v=gears) ----------
 function gearsVisual() {
   const BASE = 1.2, LAYERS = 3, PITCH = 3.3;
   const A = gearCells({ n: 16, pitch: PITCH, bore: 2.0, holes: 5, hr: 1.5, ho: 5.2, layers: LAYERS });
@@ -312,116 +312,56 @@ function gearsVisual() {
   };
 }
 
-// De EUV-lichtbron van een chiplithografiemachine als voxelmodel (1 eenheid = 10 cm, assen langs x): vat met
-// uitsnede, spiegelschaal (de echte ellipsoide), druppelgenerator, laserlijn en scannerbuis. Een CO2-laser raakt
-// elke 0,2 s een tindruppel: plasmaflits, EUV-straaltjes via de spiegel naar het tussenfocus.
-function machineVisual() {
-  const s = 0.4, CL = 6.0, AX = -5.2, S1 = 1.8, S2 = 14.2, EA = 8.0, EB = Math.sqrt(EA * EA - 6.2 * 6.2);
-  const sOf = r => EA - EA * Math.sqrt(Math.max(0, 1 - (r / EB) ** 2));          // spiegeloppervlak: a bij straal r
-  const lerpN = (a, b, t) => a + (b - a) * t, inr = (v, lo, hi) => v >= lo && v < hi;
-  const group = new THREE.Group(); scene.add(group);
-  const classify = (a, y, z) => {
-    const h = y - CL, r = Math.hypot(h, z), th = Math.atan2(h, z), rho = Math.hypot(a - S1, z);
-    // druppelgenerator boven het vat en het huis van het schuifventiel: nooit weggesneden
-    if (h >= 4.0 && h < 5.6 && rho < 0.2 + 0.4 * (h - 4.0) / 1.6) return "steel";
-    if (inr(h, 5.0, 5.6) && rho < 1.05) return "flange";
-    if (inr(h, 5.6, 8.6) && rho < 0.7) return "steel";
-    if (inr(h, 5.7, 8.4) && rho >= 0.7 && rho < 1.0 && ((Math.atan2(z, a - S1) / (2 * Math.PI) - h / 1.1) % 1 + 1) % 1 < 0.24) return "coil";
-    if (inr(h, 8.6, 9.3) && rho < 0.85) return "brass";
-    if (inr(h, 9.3, 9.8) && rho < 0.95) return "accent";
-    if (inr(a, 15.8, 16.7) && inr(h, 1.2, 2.8) && Math.abs(z) < 1.0) return "vessel";
-    // onderstellen: zadels onder het vat, steunen onder laserlijn en scannerbuis
-    if (y > 0.8) {
-      for (const a0 of [-0.2, 5.2]) if (Math.abs(a - a0) < 0.6 && Math.abs(z) < 3.6 && y < CL - Math.sqrt(Math.max(0, 27.04 - z * z)) + 0.1) return "frame";
-      for (const [a0, a1, top] of [[-9.8, -9.0, 1.35], [-6.2, -5.4, 1.0], [17.3, 18.1, 1.3], [19.6, 20.4, 1.3]]) if (inr(a, a0, a1) && Math.abs(z) < 1.0 && y < CL - top) return "frame";
-      if ((inr(a, -9.8, -5.4) || inr(a, 17.3, 20.4)) && Math.abs(z) < 0.5 && inr(y, 1.6, 2.4)) return "frame";
+// Het WILVO-logo als plaatwerk: het echte logo (../wilvo-logo.svg) wordt in de browser naar pixels getekend en tot een staand
+// bord geëxtrudeerd: witte achterplaat, de rode balk en de letters staan er voor. Onderaan een omgezette voet en twee
+// steunhoeken, zoals een gezette plaat. Een lichtstreep loopt er telkens overheen.
+function logoVisual() {
+  const W = 140, H = 66, HC = 50, vs = 29.4 / W, Z0 = -2.4, group = new THREE.Group(); scene.add(group);
+  const light = new THREE.PointLight(0xfff4e0, 0, 24, 1.3); light.position.set(-20, 9, 6); scene.add(light);
+  const PAL = { red: "#e0262e", ink: "#0a1220", badge: "#f1f4f5", steel: "#aeb9bf" };
+  const self = { az: 22, ty: 4.6, fitH: 12, zoom: 0.9, vox: [], recolor() { colorize(); }, tick };
+  let vM = null;
+  function build(px) { // px: RGBA van het logo, W x H
+    const cells = [], push = (x, y, z, key) => cells.push({ x, y, z, key, fall: y + 1.4, delay: Math.min(0.38, 0.27 * (1 - y / 11) + 0.1 * Math.random()) });
+    for (let py = 0; py < HC; py++) for (let qx = 0; qx < W; qx++) {
+      const i = (py * W + qx) * 4; if (px[i + 3] < 100) continue;
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      const key = r > 170 && g < 110 && b < 110 ? "red" : (r + g + b) / 3 < 120 ? "ink" : "badge";
+      const x = (qx - W / 2 + 0.5) * vs, y = 0.5 + (HC - py - 0.5) * vs;
+      push(x, y, Z0, key);
+      if (key !== "badge") { push(x, y, Z0 + vs, key); push(x, y, Z0 + 2 * vs, key); }
     }
-    // alles om de optische as; boven de as aan de kijkerskant is het vat opengewerkt
-    const cut = a > -1.7 && z > 0 && h > 0;
-    let k = null;
-    const rc = lerpN(5.2, 0.7, (a - 6.6) / 6.4);
-    if (inr(a, -1.2, 6.2) && inr(r, 4.8, 5.2)) k = "vessel";
-    else if (inr(a, -1.2, -0.8) && inr(r, 0.62, 5.2)) k = "vessel";
-    else if ((inr(a, -1.6, -1.2) || inr(a, 6.2, 6.6)) && inr(r, 4.8, 6.0)) k = r > 5.3 && r < 5.7 && Math.cos(th * 18) > 0.6 ? "bolt" : "flange";
-    else if (inr(a, 6.6, 13.0) && inr(r, Math.max(rc - 0.5, 0.45), rc)) k = "vessel";
-    else if (inr(a, 13.0, 15.0) && inr(r, 0.45, 0.85)) k = "steel";
-    else if ((inr(a, 15.0, 15.4) || inr(a, 16.9, 17.3)) && inr(r, 0.45, 1.7)) k = "flange";
-    else if (inr(a, 15.4, 16.9) && inr(r, 0.45, 1.2)) k = "vessel";
-    else if (inr(a, 17.3, 20.5) && inr(r, 0.9, 1.3)) k = "alu";
-    else if (inr(a, 20.5, 20.9) && inr(r, 0.5, 1.6)) k = "accent";
-    else if (inr(r, 0.52, 3.25)) { const so = sOf(r); if (a > so - 0.8 && a <= so) k = a > so - 0.4 ? "mirror" : "substrate"; }
-    if (!k && inr(a, -1.2, -0.3) && inr(r, 0.56, 1.05)) k = "steelD";
-    if (!k && inr(a, 0.8, 1.2) && inr(r, 4.0, 4.4)) k = "gold";
-    if (k) return cut ? null : k;
-    // laserlijn buiten het vat: buis, balg en eindmodule (niet weggesneden)
-    if (inr(a, -8.4, 0.2) && inr(r, 0.28, 0.5 + (inr(a, -7.8, -4.2) && Math.sin(a * 7.85) > 0 ? 0.55 : 0))) return "steel";
-    if (inr(a, -10.8, -8.4) && r < 1.3) return inr(a, -10.8, -10.4) && r < 1.0 ? "gold" : "alu";
-    if (inr(a, -9.0, -8.6) && inr(r, 1.3, 1.55)) return "accent";
-    // tinvanger op de bodem van het vat
-    const hh = y - (CL - 4.8);
-    if (inr(hh, 0, 2.2) && !cut) { const rf = 0.5 + hh / 2.2; if (inr(rho, Math.max(rf - 0.5, 0), rf)) return "steel"; if (inr(hh, 0.4, 0.8) && rho < 0.5) return "tin"; }
-    return null;
-  };
-  const cells = [];
-  for (let ia = 0; ia < 80; ia++) for (let iy = 0; iy < 42; iy++) for (let iz = -16; iz < 16; iz++) {
-    const a = -11 + (ia + 0.5) * s, y = (iy + 0.5) * s, z = (iz + 0.5) * s, key = classify(a, y, z);
-    if (key) cells.push({ x: a + AX, y, z, key, fall: y + 1.4, delay: Math.min(0.38, 0.27 * (1 - y / 17) + 0.1 * Math.random()) });
-  }
-  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(s, s, s), mat, cells.length); mesh.castShadow = mesh.receiveShadow = true; group.add(mesh);
-  const vM = { mesh, cells, j: cells.map(jitter), delay: cells.map(c => c.delay) };
-  const PAL = { flange: "#9aa7ad", bolt: "#3a4248", steel: "#aeb9bf", steelD: "#59656b", alu: "#d5dade", gold: "#e0b24f", brass: "#d6b25a", mirror: "#9db4e6", substrate: "#3a3d46", coil: "#ff9a3a", tin: "#d98a3f", frame: "#2b3238" };
-
-  // Effecten: druppels, plasma, laserstraal, EUV-straaltjes via de spiegel, gloed in het tussenfocus
-  const fx = new THREE.Group(); scene.add(fx);
-  const glow = (geo, color, op) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); m.castShadow = false; m.frustumCulled = false; fx.add(m); return m; };
-  const P0 = new THREE.Vector3(S1 + AX, CL, 0), P2 = new THREE.Vector3(S2 + AX, CL, 0);
-  const VT = 0.2, VV = 4.0, step = VT * VV, ND = 6;
-  const drops = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ color: 0xe3e7ec }), ND); drops.frustumCulled = false; fx.add(drops);
-  const core = glow(new THREE.SphereGeometry(1, 20, 14), 0xeef0ff, 1), halo = glow(new THREE.SphereGeometry(1, 20, 14), 0x6a74ff, 0.5);
-  core.position.copy(P0); halo.position.copy(P0);
-  const beam1 = glow(new THREE.CylinderGeometry(0.03, 0.3, S1 + 0.8, 16, 1, true).rotateZ(-Math.PI / 2), 0xff2a55, 0.4); beam1.position.set((S1 - 0.8) / 2 + AX, CL, 0);
-  const beam2 = glow(new THREE.CylinderGeometry(0.45, 0.03, 1.6, 16, 1, true).rotateZ(-Math.PI / 2), 0xff2a55, 0.25); beam2.position.set(S1 + 0.8 + AX, CL, 0);
-  const ifCore = glow(new THREE.SphereGeometry(0.4, 16, 12), 0xdfe4ff, 1), ifHalo = glow(new THREE.SphereGeometry(1, 16, 12), 0x5a64ff, 0.4);
-  ifCore.position.copy(P2); ifHalo.position.copy(P2);
-  const light = new THREE.PointLight(0x8896ff, 0, 15, 1.2); light.position.copy(P0); scene.add(light);
-  const NR = 90, NP = 260, paths = [], rr = (() => { let q = 11; return () => (q = (q * 16807) % 2147483647) / 2147483647; })();
-  for (let i = 0; i < NR; i++) {
-    const r = lerpN(0.7, 3.1, Math.sqrt(rr())), ph = rr() * Math.PI * 2, P = new THREE.Vector3(sOf(r) + AX, CL + r * Math.sin(ph), r * Math.cos(ph));
-    paths.push({ P, l1: P.distanceTo(P0), l2: P2.distanceTo(P) });
-  }
-  const rays = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), new THREE.MeshBasicMaterial({ color: 0x9a90ff, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }), NP); rays.frustumCulled = false; fx.add(rays);
-  const pp = Array.from({ length: NP }, () => ({ i: (rr() * NR) | 0, u: rr(), v: 0.5 + rr() * 0.5 }));
-  const dm = new THREE.Matrix4(), dq = new THREE.Quaternion(), dp = new THREE.Vector3(), ds = new THREE.Vector3(), tmp = new THREE.Vector3();
-  const put = (m, k, p, sc) => { ds.setScalar(Math.max(sc, 1e-4)); dm.compose(p, dq, ds); m.setMatrixAt(k, dm); };
-  return {
-    az: 22, ty: 5.5, fitH: 17, zoom: 0.88, vox: [vM],
-    recolor(f, c) {
-      const vessel = new THREE.Color(f.vessel), accent = new THREE.Color(f.accent);
-      cells.forEach((cell, i) => vM.mesh.setColorAt(i, (cell.key === "vessel" ? c.copy(vessel) : cell.key === "accent" ? c.copy(accent) : c.set(PAL[cell.key])).multiplyScalar(vM.j[i])));
-      vM.mesh.instanceColor.needsUpdate = true;
-    },
-    tick(dt, u, t) {
-      const fade = 1 - ss(u / 0.3), ph = t % VT, flash = ph > 0.05 ? Math.exp(-(ph - 0.05) / 0.04) : 0;
-      group.visible = u < 0.999; fx.visible = fade > 0.01; light.intensity = fx.visible ? 2.2 * flash * fade : 0;
-      if (!fx.visible) return;
-      for (let i = 0; i < ND; i++) { const y = (i + 1) * step - ph * VV; dp.set(P0.x, CL + y, 0); put(drops, i, dp, y > 0.15 && y < 4.0 ? 1 : 0); }
-      drops.instanceMatrix.needsUpdate = true;
-      const rp = 0.5 + 0.55 * flash;
-      core.visible = halo.visible = flash > 0.02; core.scale.setScalar(rp * 0.7); halo.scale.setScalar(rp * 1.8); core.material.opacity = Math.min(1, flash * 1.3) * fade; halo.material.opacity = 0.5 * flash * fade;
-      beam1.material.opacity = (0.12 + 0.5 * flash) * fade; beam2.material.opacity = (0.05 + 0.3 * flash) * fade;
-      ifCore.material.opacity = (0.25 + 0.75 * flash) * fade; ifHalo.scale.setScalar(0.9 + 0.8 * flash); ifHalo.material.opacity = 0.45 * flash * fade;
-      const e = (0.08 + 0.92 * flash) * fade;
-      pp.forEach((q, k) => {
-        q.u = (q.u + dt * 0.55 * q.v) % 1; const pa = paths[q.i], d = q.u * (pa.l1 + pa.l2);
-        if (d < pa.l1) tmp.copy(P0).lerp(pa.P, d / pa.l1); else tmp.copy(pa.P).lerp(P2, (d - pa.l1) / pa.l2);
-        put(rays, k, tmp, e);
-      });
-      rays.instanceMatrix.needsUpdate = true;
+    for (let qx = 0; qx < W; qx++) for (let zi = 0; zi < 15; zi++) push((qx - W / 2 + 0.5) * vs, 0.5 + vs / 2, Z0 + (zi + 0.5) * vs, "steel");   // omgezette voet
+    for (const gx of [-9, 9]) for (let zi = 1; zi <= 14; zi++) {                                                                                    // steunhoeken achter het bord
+      const h = 3.0 * (1 - zi / 15); for (let yi = 0; yi * vs < h; yi++) for (let dx = 0; dx < 2; dx++) push(gx + (dx - 0.5) * vs, 0.5 + (yi + 0.5) * vs, Z0 - zi * vs, "steel");
     }
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(vs, vs, vs), mat, cells.length); mesh.castShadow = mesh.receiveShadow = true; group.add(mesh);
+    vM = { mesh, cells, j: cells.map(jitter), delay: cells.map(c => c.delay) };
+    self.vox.push(vM); colorize(); lastP = -1;
+  }
+  function colorize() {
+    if (!vM) return; const c = new THREE.Color();
+    vM.cells.forEach((cell, i) => vM.mesh.setColorAt(i, c.set(PAL[cell.key]).multiplyScalar(vM.j[i])));
+    vM.mesh.instanceColor.needsUpdate = true;
+  }
+  function tick(dt, u, t) {
+    group.visible = u < 0.999;
+    const ph = (t % 5) / 5;
+    light.position.x = -20 + 40 * ph; light.intensity = u < 0.5 ? 1.6 * Math.sin(Math.PI * ph) : 0;
+  }
+  // het logo naar pixels; zonder bestand een eenvoudige tekst in dezelfde kleuren
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d", { willReadFrequently: true });
+  const img = new Image();
+  img.onload = () => { g.clearRect(0, 0, W, H); g.drawImage(img, 0, 0, W, H); build(g.getImageData(0, 0, W, H).data); };
+  img.onerror = () => {
+    g.clearRect(0, 0, W, H); g.fillStyle = "#fff"; g.fillRect(2, 2, W - 4, H - 4); g.fillStyle = "#e0262e"; g.fillRect(2, 2, W - 4, 12);
+    g.fillStyle = "#0a1220"; g.font = "900 40px Arial Black, Arial, sans-serif"; g.textAlign = "center"; g.fillText("WILVO", W / 2, 52); build(g.getImageData(0, 0, W, H).data);
   };
+  img.src = "../wilvo-logo.svg";
+  return self;
 }
 
-const visual = params.get("v") === "gears" ? gearsVisual() : machineVisual();
+const visual = params.get("v") === "gears" ? gearsVisual() : logoVisual();
 function recolor() {
   const f = FINISH[finish], c = new THREE.Color();
   renderer.setClearColor(0xf5f3f1);
