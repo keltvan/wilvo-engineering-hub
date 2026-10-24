@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WILVO | QR</title>
-<!-- Het WILVO-logo (../wilvo-logo.svg) als vierkante plaat van blokjes, even groot als de QR-code; tik: het logo morpht in de QR-code en terug.
-     Eigen QR-encoder (bytemodus, correctieniveau M, versie 1-10), alleen three.js uit ../../vendor. ?u=<adres> verandert de QR (standaard de Engineering Hub). -->
+<!-- Het WILVO-logo (../wilvo-logo.svg, ongewijzigd) in een frame op een staand vierkant bord, even groot als de QR-code; tik: het logo morpht in de QR-code en terug,
+     terwijl de camera van zijaanzicht naar recht van voren draait. Eigen QR-encoder (bytemodus, niveau M, versie 1-10), alleen three.js uit ../../vendor.
+     ?u=<adres> verandert de QR (standaard de Engineering Hub). -->
 <style>
 :root { --warm: #f5f3f1; --red-ink: #c41f27; }
 * { box-sizing: border-box; }
@@ -156,65 +157,65 @@ stage.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.add(new THREE.AmbientLight(0xffffff, 0.62));
 const sun = new THREE.DirectionalLight(0xffffff, 0.55);
-sun.position.set(-18, 40, 24);
+sun.position.set(-12, 22, 36);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
-Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 120 });
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 140 });
 scene.add(sun);
-const glint = new THREE.PointLight(0xfff4e0, 0, 30, 1.3); glint.position.set(-20, 7, 4); scene.add(glint);
+const glint = new THREE.PointLight(0xfff4e0, 0, 40, 1.3); glint.position.set(-24, 20, 8); scene.add(glint);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400);
 
-const S = qr.size, N = S + 4, half = N / 2, SQ = S * 4, VS = 0.25;      // SQ: blokjes per zijde; een QR-module is 4 x 4 blokjes
+const S = qr.size, N = S + 4, VS = 1 / 6, PX = N * 6, QM = 12;       // een QR-module is 6 x 6 blokjes; QM: stille rand rond de QR in blokjes
 const rand = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
-const lerp = (a, b, t) => a + (b - a) * t, clamp01 = x => Math.min(1, Math.max(0, x));
+const lerp = (a, b, t) => a + (b - a) * t, clamp01 = x => Math.min(1, Math.max(0, x)), ease3 = e => e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
 
-// Ondergrond: een lichte stalen plaat in een rode bak met opgezette randen.
-const plate = new THREE.Mesh(new THREE.BoxGeometry(N, 0.5, N), new THREE.MeshLambertMaterial({ color: 0xeef2f3 }));
-plate.position.y = 0.25; plate.receiveShadow = true; scene.add(plate);
-const trayMat = new THREE.MeshLambertMaterial({ color: 0xe0262e });
-[[0, N / 2 + 0.25, N + 1, 0.5], [0, -N / 2 - 0.25, N + 1, 0.5], [N / 2 + 0.25, 0, 0.5, N], [-N / 2 - 0.25, 0, 0.5, N]].forEach(([x, z, w, d]) => {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.5, d), trayMat); m.position.set(x, -0.25, z); m.castShadow = m.receiveShadow = true; scene.add(m);
-});
+// Het bord: een staande lichte plaat, vierkant als de QR-code met zijn stille rand. De QR zelf is alleen de QR; het logo krijgt er een frame bij.
+const board = new THREE.Mesh(new THREE.BoxGeometry(N, N, 0.8), new THREE.MeshLambertMaterial({ color: 0xeef2f3 }));
+board.position.set(0, N / 2, -0.4); board.castShadow = board.receiveShadow = true; scene.add(board);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; ground.receiveShadow = true; scene.add(ground);
 
-// Logo en QR hebben dezelfde afmetingen en dezelfde blokjes. Het logo (../wilvo-logo.svg) wordt in de browser naar pixels getekend en
-// tot een vierkante plaat gemaakt: rode balk, een donker paneel (verlengd, zodat het vierkant wordt) en de letters als uitsnijding.
-// Blokjes die in logo én QR op dezelfde plek zitten blijven staan; de overige stromen naar de dichtstbijzijnde QR-plek (of krimpen weg / groeien aan).
-const COL = { red: "#e0262e", ink: "#0a1220" }, QRC = "#0b1320";
+// Logo en QR zijn dezelfde blokjes. Logo-stand: het echte WILVO-logo (../wilvo-logo.svg, ongewijzigd, met slogan) in een frame met
+// rode rand, klinknagels en geponste gaten. Blokjes die in logo én QR op dezelfde plek zitten blijven staan; de overige stromen naar
+// de dichtstbijzijnde QR-plek (of krimpen weg / groeien aan).
+const COL = { red: "#e0262e", ink: "#0a1220", steel: "#aeb9bf" }, QRC = "#0b1320";
 let items = [], mesh = null, lastP = -1;
 function assign(L, Q, axis, out) { // verdeel logo-blokjes L over QR-plekken Q: halveer Q, verdeel L naar rato, wissel van as
   if (!Q.length) { L.forEach(a => out.sink.push(a)); return; }
   if (!L.length) { Q.forEach(b => out.born.push(b)); return; }
   if (Q.length === 1 || L.length === 1) {
     const [one, many] = Q.length === 1 ? [Q[0], L] : [L[0], Q];
-    let best = 0, bd = Infinity; many.forEach((c, i) => { const d = Math.hypot(c.x - one.x, c.z - one.z); if (d < bd) { bd = d; best = i; } });
+    let best = 0, bd = Infinity; many.forEach((c, i) => { const d = Math.hypot(c.x - one.x, c.y - one.y); if (d < bd) { bd = d; best = i; } });
     many.forEach((c, i) => { if (Q.length === 1) { if (i === best) out.pair.push([c, one]); else out.sink.push(c); } else { if (i === best) out.pair.push([one, c]); else out.born.push(c); } });
     return;
   }
-  const k = axis ? "z" : "x", cmp = (a, b) => a[k] - b[k] || a.x - b.x || a.z - b.z;
+  const k = axis ? "y" : "x", cmp = (a, b) => a[k] - b[k] || a.x - b.x || a.y - b.y;
   L = L.slice().sort(cmp); Q = Q.slice().sort(cmp);
   const m = Q.length >> 1, l = Math.round(L.length * m / Q.length);
   assign(L.slice(0, l), Q.slice(0, m), 1 - axis, out); assign(L.slice(l), Q.slice(m), 1 - axis, out);
 }
-function build(px, W, H) { // px: RGBA van het logo, getekend op W x H (W = SQ)
-  const key = (x, y) => { const i = (y * W + x) * 4; if (px[i + 3] < 100) return null; const r = px[i], g = px[i + 1], b = px[i + 2]; return r > 170 && g < 110 && b < 110 ? "red" : (r + g + b) / 3 < 120 ? "ink" : "badge"; };
-  let barT = -1, barB = -1, panT = -1, panB = -1, lt = -1, lb = -1;
-  for (let y = 0; y < H; y++) { // hele rijen tellen: de balk is bijna rood over de volle breedte, het paneel vooral donker; de kleine slogan eronder haalt dat niet
-    let red = 0, ink = 0; for (let x = 0; x < W; x++) { const k = key(x, y); if (k === "red") red++; else if (k === "ink") ink++; }
-    if (red >= W * 0.5) { if (barT < 0) barT = y; barB = y; } else if (ink >= W * (panT < 0 ? 0.3 : 0.15)) { if (panT < 0) panT = y; panB = y; } else if (panT >= 0) break;   // het paneel is één aaneengesloten blok; de witte rij eronder beëindigt het
-  }
-  for (let y = Math.max(panT, 0); y <= panB; y++) for (let x = Math.round(W * 0.1); x < Math.round(W * 0.9); x++) if (key(x, y) === "badge") { if (lt < 0) lt = y; lb = y; break; }
-  if (barT < 0 || panT < 0 || lt < 0) { barT = 0; barB = Math.round(H * 0.2); panT = Math.round(H * 0.25); panB = Math.round(H * 0.75); lt = Math.round(H * 0.35); lb = Math.round(H * 0.65); }
-  const bh = barB - barT + 1, y0 = bh + Math.max(1, Math.round(W / 60)), Hn = SQ - y0, Lh = lb - lt + 1, lTop = y0 + ((Hn - Lh) >> 1);
-  const srcRow = r => r < bh ? barT + r : r < y0 ? -1 : r < lTop ? panT + 2 : r < lTop + Lh ? lt + (r - lTop) : panT + 2;   // letters houden hun verhouding; alleen het donkere paneel wordt hoger
-  const cell = (gx, gz, k) => ({ gx, gz, x: (gx - SQ / 2 + 0.5) * VS, z: (gz - SQ / 2 + 0.5) * VS, key: k });
+function build(px, W, H) { // px: RGBA van het logo, getekend op W x H
+  const cell = (gx, gy, k) => ({ gx, gy, x: (gx + 0.5 - PX / 2) * VS, y: N - (gy + 0.5) * VS, key: k });
   const logo = new Map(), qrc = new Map();
-  for (let r = 0; r < SQ; r++) { const sr = srcRow(r); if (sr < 0) continue; for (let gx = 0; gx < SQ; gx++) { const k = key(Math.min(W - 1, gx), Math.min(H - 1, sr)); if (k === "red" || k === "ink") logo.set(r * SQ + gx, cell(gx, r, k)); } }
-  for (let my = 0; my < S; my++) for (let mx = 0; mx < S; mx++) if (qr.dark(mx, my)) for (let sz = 0; sz < 4; sz++) for (let sx = 0; sx < 4; sx++) { const gx = mx * 4 + sx, gz = my * 4 + sz; qrc.set(gz * SQ + gx, cell(gx, gz, "ink")); }
+  const put = (m, gx, gy, k) => { if (gx >= 0 && gy >= 0 && gx < PX && gy < PX) m.set(gy * PX + gx, cell(gx, gy, k)); };
+  const RW = 9;                                                                                   // rode rand
+  for (let gy = 0; gy < PX; gy++) for (let gx = 0; gx < PX; gx++) if (Math.min(gx, gy, PX - 1 - gx, PX - 1 - gy) < RW) put(logo, gx, gy, "red");
+  const rivet = (cx, cy) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) put(logo, cx + dx, cy + dy, "steel"); };
+  for (let c = 14; c < PX - 10; c += 28) { rivet(c, 4); rivet(c, PX - 5); rivet(4, c); rivet(PX - 5, c); }
+  rivet(4, 4); rivet(PX - 5, 4); rivet(4, PX - 5); rivet(PX - 5, PX - 5);
+  const holes = cy0 => { for (let r = 0; r < 3; r++) { const cy = cy0 + r * 14, off = r % 2 ? 7 : 0; for (let cx = 28 + off; cx < PX - 26; cx += 14) for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) if (dx * dx + dy * dy <= 13.7) put(logo, cx + dx, cy + dy, "ink"); } };
+  holes(24); holes(PX - 53);                                                                      // geponste gaten boven en onder het logo
+  const ox = (PX - W) >> 1, oy = (PX - H) >> 1;                                                   // het logo zelf, onaangeroerd, in het midden
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4; if (px[i + 3] < 100) continue; const r = px[i], g = px[i + 1], b = px[i + 2];
+    const k = r > 170 && g < 110 && b < 110 ? "red" : (r + g + b) / 3 < 170 ? "ink" : null; if (k) put(logo, ox + x, oy + y, k);
+  }
+  for (let my = 0; my < S; my++) for (let mx = 0; mx < S; mx++) if (qr.dark(mx, my)) for (let sy = 0; sy < 6; sy++) for (let sx = 0; sx < 6; sx++) put(qrc, QM + mx * 6 + sx, QM + my * 6 + sy, "ink");
   const out = { pair: [], sink: [], born: [] }, Lr = [], Qr = [];
   const cb0 = new THREE.Color(QRC), jit = () => 0.94 + rand() * 0.1;
   const item = (a, b, mode) => {
     const ca = new THREE.Color(mode === 3 ? QRC : COL[a.key]).multiplyScalar(jit());
-    const dist = Math.hypot(b.x - a.x, b.z - a.z), rd = Math.hypot(a.x + b.x, a.z + b.z) / 2 / (half * 1.2);
-    items.push({ ax: a.x, az: a.z, bx: b.x, bz: b.z, mode, ca, cb: mode === 2 ? ca : cb0.clone().multiplyScalar(0.96 + rand() * 0.07), delay: 0.25 * rd + 0.05 * rand(), lift: mode === 1 ? Math.min(1.4, 0.3 + 0.15 * dist) : 0 });
+    const dist = Math.hypot(b.x - a.x, b.y - a.y), rd = Math.hypot((a.x + b.x) / 2, (a.y + b.y) / 2 - N / 2) / (N * 0.7);
+    items.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, mode, ca, cb: mode === 2 ? ca : cb0.clone().multiplyScalar(0.96 + rand() * 0.07), delay: 0.25 * rd + 0.05 * rand(), lift: mode === 1 ? Math.min(1.2, 0.25 + 0.1 * dist) : 0 });
   };
   logo.forEach((a, k) => { const b = qrc.get(k); if (b) item(a, b, 0); else Lr.push(a); });
   qrc.forEach((b, k) => { if (!logo.has(k)) Qr.push(b); });
@@ -227,32 +228,34 @@ function build(px, W, H) { // px: RGBA van het logo, getekend op W x H (W = SQ)
 function morph(p) { // p 0 = logo, 1 = QR
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3(), c = new THREE.Color();
   items.forEach((v, i) => {
-    const e = clamp01((p - v.delay) / 0.7), t = e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
-    const x = lerp(v.ax, v.bx, t), z = lerp(v.az, v.bz, t), lift = v.lift * Math.sin(Math.PI * t);
+    const t = ease3(clamp01((p - v.delay) / 0.7)), x = lerp(v.ax, v.bx, t), y = lerp(v.ay, v.by, t), lift = v.lift * Math.sin(Math.PI * t);
     sc.setScalar(Math.max(v.mode === 2 ? 1 - t : v.mode === 3 ? t : 1, 1e-4)); c.copy(v.ca).lerp(v.cb, t);
-    for (let l = 0; l < 2; l++) { pos.set(x, 0.5 + (l + 0.5) * VS + lift, z); m.compose(pos, q, sc); mesh.setMatrixAt(2 * i + l, m); mesh.setColorAt(2 * i + l, c); }
+    for (let l = 0; l < 2; l++) { pos.set(x, y, (l + 0.5) * VS + lift); m.compose(pos, q, sc); mesh.setMatrixAt(2 * i + l, m); mesh.setColorAt(2 * i + l, c); }
   });
   mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
 }
-const cv = document.createElement("canvas"), LH = Math.round(SQ * 62 / 132); cv.width = SQ; cv.height = LH; const g2 = cv.getContext("2d", { willReadFrequently: true });
+const LW = 168, LH = Math.round(LW * 136.565 / 291.164);        // het logo op ware verhouding (zijn eigen kijkdoos), 28 eenheden breed
+const cv = document.createElement("canvas"); cv.width = LW; cv.height = LH; const g2 = cv.getContext("2d", { willReadFrequently: true });
 const img = new Image();
-img.onload = () => { g2.clearRect(0, 0, SQ, LH); g2.drawImage(img, 0, 0, SQ, LH); build(g2.getImageData(0, 0, SQ, LH).data, SQ, LH); };
+img.onload = () => { g2.clearRect(0, 0, LW, LH); g2.drawImage(img, 0, 0, LW, LH); build(g2.getImageData(0, 0, LW, LH).data, LW, LH); };
 img.onerror = () => { // zonder logobestand: een eenvoudig bord in dezelfde kleuren
-  g2.clearRect(0, 0, SQ, LH); g2.fillStyle = "#fff"; g2.fillRect(2, 2, SQ - 4, LH - 4); g2.fillStyle = "#e0262e"; g2.fillRect(2, 2, SQ - 4, Math.round(LH * 0.2));
-  g2.fillStyle = "#0a1220"; g2.fillRect(2, Math.round(LH * 0.25), SQ - 4, Math.round(LH * 0.5)); g2.fillStyle = "#fff"; g2.font = "900 " + Math.round(LH * 0.4) + "px Arial Black, Arial, sans-serif"; g2.textAlign = "center"; g2.fillText("WILVO", SQ / 2, Math.round(LH * 0.64));
-  build(g2.getImageData(0, 0, SQ, LH).data, SQ, LH);
+  g2.clearRect(0, 0, LW, LH); g2.fillStyle = "#e0262e"; g2.fillRect(2, 2, LW - 4, Math.round(LH * 0.2)); g2.fillStyle = "#0a1220"; g2.fillRect(2, Math.round(LH * 0.25), LW - 4, Math.round(LH * 0.55));
+  g2.fillStyle = "#fff"; g2.font = "900 " + Math.round(LH * 0.36) + "px Arial Black, Arial, sans-serif"; g2.textAlign = "center"; g2.fillText("WILVO", LW / 2, Math.round(LH * 0.64));
+  build(g2.getImageData(0, 0, LW, LH).data, LW, LH);
 };
 img.src = "../wilvo-logo.svg";
 
-// ---------- Camera (vast) en beweging ----------
+// ---------- Camera en beweging ----------
 let u = 0, goal = 0, clock = 0, last = performance.now();
-function view() {
-  const el = 75 * Math.PI / 180, w = stage.clientWidth || 1, h = stage.clientHeight || 1;
-  const vh = Math.max(2 * half * Math.sin(el) * 1.1 + 3 * Math.cos(el), 2 * half * 1.1 * h / w);
+function view(k) { // van een zijaanzicht (het logo met zijn reliëf) naar recht van voren (de QR)
+  const az = lerp(38, 0, k) * Math.PI / 180, el = lerp(10, 0, k) * Math.PI / 180, w = stage.clientWidth || 1, h = stage.clientHeight || 1;
+  const needW = (N * Math.cos(az) + 1.2 * Math.sin(az)) * 1.12, needH = (N * Math.cos(el) + 1.2 * Math.sin(el)) * 1.12;
+  const vh = Math.max(needH, needW * h / w);
   cam.left = -vh * w / h / 2; cam.right = vh * w / h / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
-  cam.position.set(0, 100 * Math.sin(el), 100 * Math.cos(el)); cam.lookAt(0, 0, 0);
+  const ty = N / 2;
+  cam.position.set(100 * Math.sin(az) * Math.cos(el), ty + 100 * Math.sin(el), 100 * Math.cos(az) * Math.cos(el)); cam.lookAt(0, ty, 0);
 }
-function resize() { renderer.setSize(stage.clientWidth, stage.clientHeight, false); view(); }
+function resize() { renderer.setSize(stage.clientWidth, stage.clientHeight, false); lastP = -1; }
 new ResizeObserver(resize).observe(stage); resize();
 
 function toggle() { goal = goal ? 0 : 1; stage.setAttribute("aria-pressed", goal ? "true" : "false"); }
@@ -262,10 +265,10 @@ stage.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ")
 function frame(now) {
   const dt = Math.min(0.3, (now - last) / 1000); last = now;
   if (u !== goal) u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 1.8));
-  if (u !== lastP && mesh) { morph(u); lastP = u; }
+  if (u !== lastP) { if (mesh) morph(u); view(u * u * (3 - 2 * u)); lastP = u; }
   if (!reduceMotion) clock += dt;
   const ph = (clock % 5) / 5;            // lichtstreep over het logo
-  glint.position.x = -22 + 44 * ph; glint.intensity = u < 0.3 ? 1.4 * Math.sin(Math.PI * ph) * (1 - u / 0.3) : 0;
+  glint.position.x = -26 + 52 * ph; glint.intensity = u < 0.3 ? 1.5 * Math.sin(Math.PI * ph) * (1 - u / 0.3) : 0;
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
