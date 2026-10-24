@@ -4,36 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WILVO | QR</title>
-<!-- Een lasergesneden stalen plaat (de QR-code) waaruit het WILVO-logo als staand plaatwerk omhoog komt (of ?v=gears voor tandwielen). Tik: het logo zakt weg en de QR blijft.
-     Eigen QR-encoder (bytemodus, correctieniveau M, versie 1-10), alleen three.js uit ../../vendor.
-     ?u=<adres> verandert de QR (standaard de Engineering Hub), ?f=0|1|2 kiest de afwerking. -->
+<!-- Het WILVO-logo (../wilvo-logo.svg) als staand plaatwerk van blokjes; tik: het logo valt naar voren en dezelfde blokjes
+     vormen de QR-code. Eigen QR-encoder (bytemodus, correctieniveau M, versie 1-10), alleen three.js uit ../../vendor.
+     ?u=<adres> verandert de QR (standaard de Engineering Hub). -->
 <style>
-@font-face { font-family: "Roboto"; font-weight: 100 900; font-display: swap; src: url("../fonts/roboto.woff2") format("woff2"); }
-:root { --warm: #f5f3f1; --ink: #252b2e; --copy: #596267; --line: #d9dddf; --red: #e0262e; --red-ink: #c41f27; --blue-soft: #e6eef1; }
+:root { --warm: #f5f3f1; --red-ink: #c41f27; }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--warm); color: var(--ink); font: 14px/1.3 "Roboto", system-ui, sans-serif; overflow: hidden; }
-body { display: flex; flex-direction: column; }
-#stage { position: relative; flex: 1; min-height: 0; cursor: pointer; outline-offset: -3px; }
+html, body { margin: 0; height: 100%; background: var(--warm); overflow: hidden; }
+#stage { position: absolute; inset: 0; cursor: pointer; outline-offset: -3px; }
 #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-#logo { position: absolute; left: 14px; top: 12px; height: 26px; pointer-events: none; }
-#hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); max-width: calc(100% - 28px); padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.85); color: var(--copy); font-size: 13px; text-align: center; pointer-events: none; }
-#bar { display: flex; gap: 8px; justify-content: center; padding: 8px 14px 12px; }
-#bar button { flex: 0 1 110px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
-#bar button[aria-checked="true"] { background: var(--blue-soft); border-color: #6f96a6; }
-#bar button:focus-visible, #stage:focus-visible { outline: 3px solid var(--red-ink); }
+#stage:focus-visible { outline: 3px solid var(--red-ink); }
 #flat { display: none; margin: auto; max-width: 90%; max-height: 90%; image-rendering: pixelated; }
 </style>
 </head>
 <body>
-<div id="stage" role="button" tabindex="0" aria-pressed="false" aria-label="Wissel tussen tandwielen en QR-code">
-  <img id="logo" src="../wilvo-logo.svg" alt="WILVO">
-  <div id="hint">Tik voor de QR-code</div>
-</div>
-<div id="bar" role="radiogroup" aria-label="Afwerking">
-  <button type="button" role="radio" aria-checked="true">Staal</button>
-  <button type="button" role="radio" aria-checked="false">Rood</button>
-  <button type="button" role="radio" aria-checked="false">Zink</button>
-</div>
+<div id="stage" role="button" tabindex="0" aria-pressed="false" aria-label="WILVO-logo: wissel tussen het logo en de QR-code van de Engineering Hub"></div>
 <script src="../../vendor/three-0.147.0/three.min.js"></script>
 <script>
 "use strict";
@@ -134,12 +119,6 @@ function makeQR(text) {
 const params = new URLSearchParams(location.search);
 const HUB = "https://keltvan.github.io/wilvo-engineering-hub/";
 const target = (params.get("u") || HUB).slice(0, 200);
-const FINISH = [
-  { gearA: "#9fb3bd", gearB: "#e0262e", vessel: "#7d95a3", accent: "#e0262e", tray: "#8da0ab", dark: "#2c3438", light: "#e6eef1" }, // staal + WILVO-rood
-  { gearA: "#e0262e", gearB: "#a7c2ce", vessel: "#e0262e", accent: "#a7c2ce", tray: "#e0262e", dark: "#3a1519", light: "#f1e9e7" }, // rood gepoedercoat
-  { gearA: "#d3d8db", gearB: "#6f96a6", vessel: "#d3d8db", accent: "#4f7f95", tray: "#c3cacf", dark: "#3d4a52", light: "#eef2f3" }  // zink
-];
-let finish = Math.min(2, Math.max(0, +params.get("f") || 0));
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const qr = makeQR(target);
 
@@ -160,7 +139,7 @@ if (params.has("selftest")) {
 }
 
 // ---------- Scene ----------
-const stage = document.getElementById("stage"), hint = document.getElementById("hint");
+const stage = document.getElementById("stage");
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { renderer = null; }
 if (!renderer) { // zonder WebGL: platte QR, zodat de tegel nooit leeg blijft
@@ -168,13 +147,13 @@ if (!renderer) { // zonder WebGL: platte QR, zodat de tegel nooit leeg blijft
   c.width = c.height = n; c.id = "flat"; c.style.display = "block";
   g.fillStyle = "#fff"; g.fillRect(0, 0, n, n); g.fillStyle = "#252b2e";
   for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) if (qr.dark(x, y)) g.fillRect(x + 4, y + 4, 1, 1);
-  stage.appendChild(c); hint.textContent = "Scan met je telefoon";
+  stage.appendChild(c);
   throw new Error("WebGL niet beschikbaar: platte QR getoond");
 }
 renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
 renderer.setClearColor(0xf5f3f1);
 renderer.shadowMap.enabled = true;
-stage.insertBefore(renderer.domElement, stage.firstChild);
+stage.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.add(new THREE.AmbientLight(0xffffff, 0.62));
 const sun = new THREE.DirectionalLight(0xffffff, 0.55);
@@ -182,237 +161,101 @@ sun.position.set(-18, 40, 24);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
 Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 120 });
 scene.add(sun);
+const glint = new THREE.PointLight(0xfff4e0, 0, 24, 1.3); glint.position.set(-20, 9, 6); scene.add(glint);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400);
 
-const S = qr.size, half = (S + 4) / 2, rand = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
-const mat = new THREE.MeshLambertMaterial();
-const jitter = () => 0.93 + rand() * 0.1;
-const tint = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
+const S = qr.size, N = S + 4, half = N / 2, rand = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const ss = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+const rad = d => d * Math.PI / 180, lerp = (a, b, t) => a + (b - a) * t;
 
-// Plaatwerk, waar WILVO om bekend staat: een lasergesneden stalen plaat met opgezette randen (een bak). De donkere
-// QR-modules zijn uitsnijdingen waar de donkere bodemplaat doorheen schijnt; de lichte modules en de rand zijn de plaat zelf.
-const N = S + 4, slab = new THREE.Mesh(new THREE.BoxGeometry(N, 0.5, N), new THREE.MeshLambertMaterial());
-slab.position.y = -0.25; slab.receiveShadow = true; scene.add(slab);
-const trayMat = new THREE.MeshLambertMaterial();
+// Ondergrond: een lichte stalen plaat in een rode bak met opgezette randen (de QR-code staat er licht op af).
+const plate = new THREE.Mesh(new THREE.BoxGeometry(N, 0.5, N), new THREE.MeshLambertMaterial({ color: 0xeef2f3 }));
+plate.position.y = 0.25; plate.receiveShadow = true; scene.add(plate);
+const trayMat = new THREE.MeshLambertMaterial({ color: 0xe0262e });
 [[0, N / 2 + 0.25, N + 1, 0.5], [0, -N / 2 - 0.25, N + 1, 0.5], [N / 2 + 0.25, 0, 0.5, N], [-N / 2 - 0.25, 0, 0.5, N]].forEach(([x, z, w, d]) => {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.5, d), trayMat); m.position.set(x, -0.25, z); m.castShadow = m.receiveShadow = true; scene.add(m);
 });
-const mods = [];
-for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-  const qx = x - 2, qy = y - 2, hole = qx >= 0 && qy >= 0 && qx < S && qy < S && qr.dark(qx, qy);
-  mods.push({ x: x - N / 2 + 0.5, z: y - N / 2 + 0.5, hole, o: y * N + (y % 2 ? N - 1 - x : x), j: jitter() });
-}
-const plate = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.5, 1), mat, mods.length);
-plate.receiveShadow = plate.castShadow = true; scene.add(plate);
-function cutTo(p) { // p 0..1: hoeveel van de plaat de laser al gesneden heeft (regel voor regel, heen en terug)
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3(), lim = p * N * N;
-  mods.forEach((o, i) => { sc.setScalar(o.hole && o.o < lim ? 1e-4 : 1); pos.set(o.x, 0.25, o.z); m.compose(pos, q, sc); plate.setMatrixAt(i, m); });
-  plate.instanceMatrix.needsUpdate = true;
-}
-cutTo(0);
 
-// Lasersnijkop op een portaal: loopt over de plaat, de straal snijdt, vonken spatten weg
-const laser = new THREE.Group(); laser.visible = false; scene.add(laser);
-const lm = (g, c) => { const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: c })); m.castShadow = true; return m; };
-const rail = lm(new THREE.BoxGeometry(N + 4, 0.3, 0.4), 0x59656b); rail.position.y = 5.2; laser.add(rail);
-for (const sx of [-1, 1]) { const leg = lm(new THREE.BoxGeometry(0.4, 6.4, 0.4), 0x59656b); leg.position.set(sx * (N / 2 + 1.8), 2.0, 0); laser.add(leg); }
-const head = new THREE.Group(); laser.add(head);
-const body = lm(new THREE.BoxGeometry(1.5, 1.2, 1.1), 0xaeb9bf); body.position.y = 4.4; head.add(body);
-const nozzle = lm(new THREE.CylinderGeometry(0.08, 0.38, 0.9, 16), 0xe0262e); nozzle.position.y = 3.45; head.add(nozzle);
-const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 3.0, 8), new THREE.MeshBasicMaterial({ color: 0xff5a3a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
-beam.position.y = 1.95; head.add(beam);
-const NS = 70, sparks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }), NS);
-sparks.frustumCulled = false; scene.add(sparks);
-const sp = Array.from({ length: NS }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), l: 0 })); let spN = 0;
-function laserTick(dt, p) {
-  const on = p > 0 && p < 1; laser.visible = on;
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
-  if (on) {
-    const row = p * N, r = Math.min(N - 1, Math.floor(row)), f = row - r;
-    laser.position.z = r - N / 2 + 0.5; head.position.x = ((r % 2 ? 1 - f : f) * N) - N / 2;
-    for (let k = 0; k < 2; k++) { const q2 = sp[spN++ % NS]; q2.p.set(head.position.x, 0.55, laser.position.z); q2.v.set((Math.random() - 0.5) * 3, 2 + Math.random() * 3.5, (Math.random() - 0.5) * 3); q2.l = 0.55; }
+// Het logo en de QR-code zijn dezelfde blokjes. Het logo (../wilvo-logo.svg) wordt in de browser naar pixels getekend en tot een
+// staand bord geëxtrudeerd (witte achterplaat, de rode balk en het donkere paneel staan er voor, de letters zijn uitgesneden);
+// elk blokje heeft een plek in het logo en een plek in de QR. Blokjes die de QR niet nodig heeft, zakken in de plaat.
+const VS = 0.25, LW = 132, LH = 62, HC = 47, Z0 = -3.0;       // blokgrootte, logo-pixels breed en hoog, rijen tot onder het paneel, vlak van het bord
+const COL = { red: "#e0262e", ink: "#0a1220", badge: "#f1f4f5", steel: "#aeb9bf" }, QRC = "#0b1320";
+let items = [], mesh = null, lastP = -1, glintOn = 0;
+function build(px) {
+  const main = [], extra = [], dst = [];
+  for (let py = 0; py < HC; py++) for (let qx = 0; qx < LW; qx++) {
+    const i = (py * LW + qx) * 4; if (px[i + 3] < 100) continue;
+    const r = px[i], g = px[i + 1], b = px[i + 2];
+    const key = r > 170 && g < 110 && b < 110 ? "red" : (r + g + b) / 3 < 120 ? "ink" : "badge";
+    const x = (qx - LW / 2 + 0.5) * VS, y = 0.5 + (HC - py - 0.5) * VS;
+    for (let l = 0; l < (key === "badge" ? 1 : 2); l++) main.push({ x, y, z: Z0 + l * VS, col: qx, key });
   }
-  sp.forEach((q2, i) => {
-    q2.l -= dt; q2.p.addScaledVector(q2.v, dt); q2.v.y -= 14 * dt; if (q2.p.y < 0.5) { q2.p.y = 0.5; q2.v.y *= -0.3; }
-    sc.setScalar(Math.max(q2.l, 0) / 0.55 + 1e-4); m.compose(q2.p, q, sc); sparks.setMatrixAt(i, m);
-  });
-  sparks.instanceMatrix.needsUpdate = true;
-}
-
-// Voxelgroep: InstancedMesh met een eigen val-animatie per kubusje.
-const CUBE = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-function voxels(cells, parent) {
-  const mesh = new THREE.InstancedMesh(CUBE, mat, cells.length);
-  mesh.castShadow = mesh.receiveShadow = true; parent.add(mesh);
-  return { mesh, cells, j: cells.map(jitter), delay: cells.map(c => c.delay) };
-}
-let lastP = -1;
-function fall(v, p) { // p 0 = op zijn plek, 1 = door de plaat gezakt
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3();
-  v.cells.forEach((c, i) => {
-    const e = Math.min(1, Math.max(0, (p - v.delay[i]) / 0.5)); pos.set(c.x, c.y - e * e * (c.fall ?? 5), c.z);
-    m.compose(pos, q, one); v.mesh.setMatrixAt(i, m);
-  });
-  v.mesh.instanceMatrix.needsUpdate = true;
-}
-
-function gearCells({ n, pitch, bore, holes, hr, ho, layers, delay }) {
-  const rp = n * pitch / (2 * Math.PI), add = 0.22 * pitch, ded = 0.22 * pitch, step = 0.5, K = Math.ceil((rp + add + 1) / step), cells = [], a = 2 * Math.PI / n;
-  for (let ix = -K; ix < K; ix++) for (let iz = -K; iz < K; iz++) {
-    const x = (ix + 0.5) * step, z = (iz + 0.5) * step, r = Math.hypot(x, z);
-    if (r < bore) continue;
-    const t = ((Math.atan2(z, x) / a) % 1 + 1) % 1, d = 2 * Math.min(t, 1 - t);
-    const lim = d < 0.3 ? rp + add : d < 0.7 ? rp + add - (rp + add - (rp - ded)) * (d - 0.3) / 0.4 : rp - ded;
-    if (r > lim) continue;
-    let hole = false;
-    for (let k = 0; k < holes; k++) hole = hole || Math.hypot(x - ho * Math.cos(2 * Math.PI * k / holes), z - ho * Math.sin(2 * Math.PI * k / holes)) < hr;
-    if (hole) continue;
-    for (let l = 0; l < layers; l++) cells.push({ x, y: (l + 0.5) * step, z, delay: Math.min(0.3, 0.05 * (layers - l) + 0.18 * r / (rp + add) * Math.random()) });
+  for (let qx = 0; qx < LW; qx++) for (let zi = 0; zi < 15; zi++) extra.push({ x: (qx - LW / 2 + 0.5) * VS, y: 0.5 + VS / 2, z: Z0 + (zi + 0.5) * VS, key: "steel" });   // omgezette voet
+  for (const gx of [-9, 9]) for (let zi = 1; zi <= 14; zi++) {                                                                                                         // steunhoeken
+    const h = 3.0 * (1 - zi / 15); for (let yi = 0; yi * VS < h; yi++) for (let dx = 0; dx < 2; dx++) extra.push({ x: gx + (dx - 0.5) * VS, y: 0.5 + (yi + 0.5) * VS, z: Z0 - zi * VS, key: "steel" });
   }
-  return { cells, rp };
-}
-function pinCells({ r, y0, y1, head, delay }) {
-  const cells = [], step = 0.5, K = Math.ceil((head + 0.5) / step);
-  for (let ix = -K; ix < K; ix++) for (let iz = -K; iz < K; iz++) {
-    const x = (ix + 0.5) * step, z = (iz + 0.5) * step, rr = Math.hypot(x, z);
-    if (rr < r) for (let y = y0; y < y1; y += step) cells.push({ x, y: y + step / 2, z, delay });
-    if (rr < head) cells.push({ x, y: y1 + step / 2, z, delay });
-  }
-  return cells;
-}
-
-// ---------- Beelden: het WILVO-logo als plaatwerk (standaard) of de tandwielen (?v=gears) ----------
-function gearsVisual() {
-  const BASE = 1.2, LAYERS = 3, PITCH = 3.3;
-  const A = gearCells({ n: 16, pitch: PITCH, bore: 2.0, holes: 5, hr: 1.5, ho: 5.2, layers: LAYERS });
-  const B = gearCells({ n: 9, pitch: PITCH, bore: 1.4, holes: 3, hr: 0.7, ho: 2.7, layers: LAYERS });
-  const posA = { x: -5.2, z: -3.2 }, thetaC = 0.5, dist = A.rp + B.rp;
-  const posB = { x: posA.x + dist * Math.cos(thetaC), z: posA.z + dist * Math.sin(thetaC) };
-  const groupA = new THREE.Group(), groupB = new THREE.Group(), pins = new THREE.Group();
-  groupA.position.set(posA.x, BASE, posA.z); groupB.position.set(posB.x, BASE, posB.z);
-  scene.add(groupA, groupB, pins);
-  const vA = voxels(A.cells, groupA), vB = voxels(B.cells, groupB);
-  const topY = BASE + LAYERS * 0.5;
-  const pinA = pinCells({ r: 1.6, y0: 0.3, y1: topY, head: 2.4, delay: 0.3 }).map(c => ({ ...c, x: c.x + posA.x, z: c.z + posA.z }));
-  const pinB = pinCells({ r: 1.1, y0: 0.3, y1: topY, head: 1.9, delay: 0.3 }).map(c => ({ ...c, x: c.x + posB.x, z: c.z + posB.z }));
-  const vP = voxels(pinA.concat(pinB), pins);
-  const nA = 16, nB = 9, beta0 = thetaC * (1 + nA / nB) + Math.PI - Math.PI / nB;
-  return {
-    az: 45, ty: 1.2, fitH: 7, zoom: 1, vox: [vA, vB, vP],
-    recolor(f, c) {
-      vA.cells.forEach((_, i) => vA.mesh.setColorAt(i, c.set(f.gearA).multiplyScalar(vA.j[i])));
-      vB.cells.forEach((_, i) => vB.mesh.setColorAt(i, c.set(f.gearB).multiplyScalar(vB.j[i])));
-      vP.cells.forEach((cell, i) => vP.mesh.setColorAt(i, c.set(cell.y > topY ? "#9aa7ad" : "#59656b").multiplyScalar(vP.j[i])));
-      [vA.mesh, vB.mesh, vP.mesh].forEach(m => { m.instanceColor.needsUpdate = true; });
-    },
-    tick(dt, u, t) {
-      groupA.rotation.y = -t * 0.35; groupB.rotation.y = -(beta0 - nA / nB * t * 0.35);
-      groupA.visible = groupB.visible = pins.visible = u < 0.999;
-    }
+  for (let my = 0; my < S; my++) for (let mx = 0; mx < S; mx++) if (qr.dark(mx, my)) for (let sz = 0; sz < 4; sz++) for (let sx = 0; sx < 4; sx++)
+    dst.push({ x: mx - S / 2 + (sx + 0.5) / 4, y: 0.5 + VS / 2, z: my - S / 2 + (sz + 0.5) / 4, col: (mx * 4 + sx) * LW / (S * 4) });
+  main.sort((a, b) => a.col - b.col || a.y - b.y); dst.sort((a, b) => a.col - b.col || a.z - b.z);   // kolom voor kolom: onderkant logo -> achterkant QR, bovenkant -> voorkant
+  const used = new Uint8Array(main.length), cb = new THREE.Color(QRC);
+  const item = (a, b, sink) => {
+    const ca = new THREE.Color(COL[a.key]).multiplyScalar(0.94 + rand() * 0.1);
+    return { a, b, sink, ca, cb: sink ? ca : cb.clone().multiplyScalar(0.96 + rand() * 0.07), delay: Math.min(0.4, 0.34 * (1 - a.y / 12.5) + 0.04 * rand()), bump: sink ? 0 : 0.16 * Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * (0.9 + 0.2 * rand()) };
   };
+  dst.forEach((b, k) => { const s = Math.min(main.length - 1, Math.floor((k + 0.5) * main.length / dst.length)); used[s] = 1; items.push(item(main[s], b, false)); });
+  main.forEach((a, s) => { if (!used[s]) items.push(item(a, { x: a.x, y: 0.4, z: a.z + 5 * rand() }, true)); });
+  extra.forEach(a => items.push(item(a, { x: a.x, y: 0.4, z: a.z }, true)));
+  mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(VS, VS, VS), new THREE.MeshLambertMaterial(), items.length);
+  mesh.castShadow = mesh.receiveShadow = true; mesh.frustumCulled = false; scene.add(mesh);
+  lastP = -1;
+  if (!reduceMotion) setTimeout(() => { if (!touched) goal = 0; }, 900);     // eerst even de QR, dan vormt het logo zich
 }
-
-// Het WILVO-logo als plaatwerk: het echte logo (../wilvo-logo.svg) wordt in de browser naar pixels getekend en tot een staand
-// bord geëxtrudeerd: witte achterplaat, de rode balk en de letters staan er voor. Onderaan een omgezette voet en twee
-// steunhoeken, zoals een gezette plaat. Een lichtstreep loopt er telkens overheen.
-function logoVisual() {
-  const W = 140, H = 66, HC = 50, vs = 29.4 / W, Z0 = -2.4, group = new THREE.Group(); scene.add(group);
-  const light = new THREE.PointLight(0xfff4e0, 0, 24, 1.3); light.position.set(-20, 9, 6); scene.add(light);
-  const PAL = { red: "#e0262e", ink: "#0a1220", badge: "#f1f4f5", steel: "#aeb9bf" };
-  const self = { az: 22, ty: 4.6, fitH: 12, zoom: 0.9, vox: [], recolor() { colorize(); }, tick };
-  let vM = null;
-  function build(px) { // px: RGBA van het logo, W x H
-    const cells = [], push = (x, y, z, key) => cells.push({ x, y, z, key, fall: y + 1.4, delay: Math.min(0.38, 0.27 * (1 - y / 11) + 0.1 * Math.random()) });
-    for (let py = 0; py < HC; py++) for (let qx = 0; qx < W; qx++) {
-      const i = (py * W + qx) * 4; if (px[i + 3] < 100) continue;
-      const r = px[i], g = px[i + 1], b = px[i + 2];
-      const key = r > 170 && g < 110 && b < 110 ? "red" : (r + g + b) / 3 < 120 ? "ink" : "badge";
-      const x = (qx - W / 2 + 0.5) * vs, y = 0.5 + (HC - py - 0.5) * vs;
-      push(x, y, Z0, key);
-      if (key !== "badge") { push(x, y, Z0 + vs, key); push(x, y, Z0 + 2 * vs, key); }
-    }
-    for (let qx = 0; qx < W; qx++) for (let zi = 0; zi < 15; zi++) push((qx - W / 2 + 0.5) * vs, 0.5 + vs / 2, Z0 + (zi + 0.5) * vs, "steel");   // omgezette voet
-    for (const gx of [-9, 9]) for (let zi = 1; zi <= 14; zi++) {                                                                                    // steunhoeken achter het bord
-      const h = 3.0 * (1 - zi / 15); for (let yi = 0; yi * vs < h; yi++) for (let dx = 0; dx < 2; dx++) push(gx + (dx - 0.5) * vs, 0.5 + (yi + 0.5) * vs, Z0 - zi * vs, "steel");
-    }
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(vs, vs, vs), mat, cells.length); mesh.castShadow = mesh.receiveShadow = true; group.add(mesh);
-    vM = { mesh, cells, j: cells.map(jitter), delay: cells.map(c => c.delay) };
-    self.vox.push(vM); colorize(); lastP = -1;
-  }
-  function colorize() {
-    if (!vM) return; const c = new THREE.Color();
-    vM.cells.forEach((cell, i) => vM.mesh.setColorAt(i, c.set(PAL[cell.key]).multiplyScalar(vM.j[i])));
-    vM.mesh.instanceColor.needsUpdate = true;
-  }
-  function tick(dt, u, t) {
-    group.visible = u < 0.999;
-    const ph = (t % 5) / 5;
-    light.position.x = -20 + 40 * ph; light.intensity = u < 0.5 ? 1.6 * Math.sin(Math.PI * ph) : 0;
-  }
-  // het logo naar pixels; zonder bestand een eenvoudige tekst in dezelfde kleuren
-  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d", { willReadFrequently: true });
-  const img = new Image();
-  img.onload = () => { g.clearRect(0, 0, W, H); g.drawImage(img, 0, 0, W, H); build(g.getImageData(0, 0, W, H).data); };
-  img.onerror = () => {
-    g.clearRect(0, 0, W, H); g.fillStyle = "#fff"; g.fillRect(2, 2, W - 4, H - 4); g.fillStyle = "#e0262e"; g.fillRect(2, 2, W - 4, 12);
-    g.fillStyle = "#0a1220"; g.font = "900 40px Arial Black, Arial, sans-serif"; g.textAlign = "center"; g.fillText("WILVO", W / 2, 52); build(g.getImageData(0, 0, W, H).data);
-  };
-  img.src = "../wilvo-logo.svg";
-  return self;
+function morph(p) { // p 0 = logo, 1 = QR
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), sc = new THREE.Vector3(), c = new THREE.Color();
+  items.forEach((v, i) => {
+    const e = Math.min(1, Math.max(0, (p - v.delay) / 0.6)), t = e * e * (3 - 2 * e);
+    pos.set(lerp(v.a.x, v.b.x, t), lerp(v.a.y, v.b.y, t) + v.bump * Math.sin(Math.PI * t), lerp(v.a.z, v.b.z, t));
+    sc.setScalar(Math.max(v.sink ? 1 - ss((e - 0.55) / 0.45) : 1, 1e-4)); m.compose(pos, q, sc); mesh.setMatrixAt(i, m);
+    mesh.setColorAt(i, c.copy(v.ca).lerp(v.cb, t));
+  });
+  mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
 }
-
-const visual = params.get("v") === "gears" ? gearsVisual() : logoVisual();
-function recolor() {
-  const f = FINISH[finish], c = new THREE.Color();
-  renderer.setClearColor(0xf5f3f1);
-  slab.material.color.set(f.dark); trayMat.color.set(f.tray);
-  mods.forEach((o, i) => plate.setColorAt(i, c.set(f.light).multiplyScalar(o.j)));
-  plate.instanceColor.needsUpdate = true;
-  visual.recolor(f, c);
-}
-recolor();
+const cv = document.createElement("canvas"); cv.width = LW; cv.height = LH; const g2 = cv.getContext("2d", { willReadFrequently: true });
+const img = new Image();
+img.onload = () => { g2.clearRect(0, 0, LW, LH); g2.drawImage(img, 0, 0, LW, LH); build(g2.getImageData(0, 0, LW, LH).data); };
+img.onerror = () => { // zonder logobestand: een eenvoudige tekst in dezelfde kleuren
+  g2.clearRect(0, 0, LW, LH); g2.fillStyle = "#fff"; g2.fillRect(2, 2, LW - 4, LH - 4); g2.fillStyle = "#e0262e"; g2.fillRect(2, 2, LW - 4, 12);
+  g2.fillStyle = "#0a1220"; g2.fillRect(2, 16, LW - 4, 30); g2.fillStyle = "#fff"; g2.font = "900 28px Arial Black, Arial, sans-serif"; g2.textAlign = "center"; g2.fillText("WILVO", LW / 2, 42);
+  build(g2.getImageData(0, 0, LW, LH).data);
+};
+img.src = "../wilvo-logo.svg";
 
 // ---------- Beweging en camera ----------
-const ss = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
-const rad = d => d * Math.PI / 180;
-let u = reduceMotion ? 0 : 1, goal = u, spin = 0, last = performance.now(), cutP = reduceMotion ? 1 : 0;
+let u = reduceMotion ? 0 : 1, goal = u, touched = false, clock = 0, last = performance.now();
 function view(k) {
-  const az = rad(visual.az) * (1 - k), el = rad(33 + 56.9 * k), fit = Math.cos(az) + Math.sin(az);
-  const needW = 2 * half * fit * 1.04, needH = 2 * half * fit * Math.sin(el) * 1.02 + visual.fitH * Math.cos(el) + 2;
-  const w = stage.clientWidth || 1, h = stage.clientHeight || 1, vh = Math.max(needH, needW * h / w) * (1 - (1 - visual.zoom) * (1 - k));
+  const az = rad(22) * (1 - k), el = rad(33 + 56.9 * k), fit = Math.cos(az) + Math.sin(az);
+  const needW = 2 * half * fit * 1.04, needH = 2 * half * fit * Math.sin(el) * 1.02 + 13 * Math.cos(el) + 2;
+  const w = stage.clientWidth || 1, h = stage.clientHeight || 1, vh = Math.max(needH, needW * h / w) * (1 - 0.1 * (1 - k));
   cam.left = -vh * w / h / 2; cam.right = vh * w / h / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
-  const ty = visual.ty * (1 - k);
+  const ty = 4.6 * (1 - k);
   cam.position.set(100 * Math.cos(el) * Math.sin(az), ty + 100 * Math.sin(el), 100 * Math.cos(el) * Math.cos(az));
   cam.lookAt(0, ty, 0);
 }
 function resize() { renderer.setSize(stage.clientWidth, stage.clientHeight, false); lastP = -1; }
 new ResizeObserver(resize).observe(stage); resize();
 
-function endIntro() { goal = 0; stage.setAttribute("aria-pressed", "false"); hint.textContent = "Tik voor de QR-code"; }
-if (cutP < 1) hint.textContent = "De laser snijdt de QR-code…";
-function toggle() {
-  if (cutP < 1) { cutP = 1; cutTo(1); endIntro(); return; }
-  goal = goal ? 0 : 1;
-  stage.setAttribute("aria-pressed", goal ? "true" : "false");
-  hint.textContent = goal ? "Scan mij · tik om terug te gaan" : "Tik voor de QR-code";
-}
+function toggle() { touched = true; goal = goal ? 0 : 1; stage.setAttribute("aria-pressed", goal ? "true" : "false"); }
 stage.addEventListener("click", toggle);
 stage.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
-document.querySelectorAll("#bar button").forEach((b, i) => b.addEventListener("click", () => {
-  finish = i; recolor();
-  document.querySelectorAll("#bar button").forEach((o, j) => o.setAttribute("aria-checked", String(i === j)));
-}));
-document.querySelectorAll("#bar button").forEach((b, i) => b.setAttribute("aria-checked", String(i === finish)));
 
-let clock = 0;
 function frame(now) {
   const dt = Math.min(0.3, (now - last) / 1000); last = now;
-  if (cutP < 1) { cutP = Math.min(1, cutP + dt / 3.5); cutTo(cutP); if (cutP === 1) endIntro(); }
-  laserTick(dt, cutP);
-  if (u !== goal) { u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 1.5)); }
-  if (u !== lastP) { const k = ss((u - 0.3) / 0.7); visual.vox.forEach(v => fall(v, u)); view(k); lastP = u; }
+  if (u !== goal) u = reduceMotion ? goal : Math.min(1, Math.max(0, u + Math.sign(goal - u) * dt / 1.8));
+  if (u !== lastP) { if (mesh) morph(u); view(ss((u - 0.35) / 0.65)); lastP = u; }
   if (!reduceMotion) clock += dt;
-  visual.tick(dt, u, reduceMotion ? 0.1 : clock);
+  const ph = (clock % 5) / 5;            // lichtstreep over het logo
+  glint.position.x = -20 + 40 * ph; glint.intensity = u < 0.4 ? 1.6 * Math.sin(Math.PI * ph) * (1 - u / 0.4) : 0;
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
