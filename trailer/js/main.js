@@ -35,7 +35,7 @@ composer.addPass(new OutputPass());
 // ---------------------------------------------------------------- studio (product + machines)
 const studio = new THREE.Scene(); studio.background = new THREE.Color('#e6e4df'); studio.environment = env;
 {
-  const hemi = new THREE.HemisphereLight('#ffffff', '#b9b4aa', 0.45); studio.add(hemi);
+  const hemi = new THREE.HemisphereLight('#ffffff', '#b9b4aa', 0.45); studio.add(hemi); studio.userData.hemi = hemi;
   const key = new THREE.DirectionalLight('#fff4e6', 1.5); key.position.set(3, 6, 4); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.camera.near = 0.1; key.shadow.camera.far = 40; key.shadow.bias = -0.00004; key.shadow.normalBias = 0.004; studio.add(key); studio.add(key.target); studio.userData.key = key;
   const rim = new THREE.DirectionalLight('#dde9ff', 0.6); rim.position.set(-4, 3, -5); studio.add(rim);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: '#e3e1dc', roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.001; floor.receiveShadow = true; studio.add(floor); studio.userData.floor = floor;
@@ -207,7 +207,7 @@ function setState(t) {
   let routeP = 0, zone = null, zoneK = 0, roofLift = 0, roofFade = 0;
   // ---- hook
   if (t < 0.9) { product.group.visible = false; }
-  else if (t < 2.07) { s.wire = 1; s.bend1 = s.bend2 = 1; }
+  else if (t < 2.07) { s.wire = 1; s.bend1 = s.bend2 = 1; product.group.rotation.y = (t - 0.9) * 0.8; }
   else if (t < 4.41) { if (t >= 3.24) { s.sheet = 1; s.cut = seg(t, 3.24, 4.41) * 0.6 + 0.2; laserWindow = [3.24, 4.41]; } }
   else if (t < 5.6) { s.bend1 = s.bend2 = 1; s.weld = seg(t, 4.41, 5.6); weldWindow = [4.41, 5.4]; arc = 1; }
   // ---- engineering
@@ -260,7 +260,7 @@ function setState(t) {
   product.weldSparks.emit = tt => { const k = clamp((tt - weldWindow[0]) / (weldWindow[1] - weldWindow[0])); return new THREE.Vector3(-(BL / 2) + BL * k, PT + 0.002, BW / 2 - 0.002); };
   product.weldSparks.update(t, weldWindow[0], weldWindow[1], 0.5);
   if (tools.torch.visible || arc > 0) { const k = clamp((t - weldWindow[0]) / (weldWindow[1] - weldWindow[0])); tools.torch.position.set(-(BL / 2) + BL * k, PT + 0.004, BW / 2 + 0.004); }
-  product.arc.intensity = arc > 0 ? 0.012 * (0.6 + 0.4 * hash(Math.floor(t * 90))) : 0; product.arc.position.copy(tools.torch.position).add(new THREE.Vector3(0, 0.01, 0));
+  product.arc.intensity = arc > 0 ? (t < 6 ? 0.004 : 0.012) * (0.6 + 0.4 * hash(Math.floor(t * 90))) : 0; product.arc.position.copy(tools.torch.position).add(new THREE.Vector3(0, 0.01, 0));
   if (tools.ram.visible) { const i = Math.min(3, Math.floor(seg(t, 59.2, 60.8) * 4)); const [x, z] = product.webHoles[i]; const tt = [59.2, 59.6, 60.0, 60.4][i]; const k = hold(t, tt - 0.25, tt + 0.3, 0.2); tools.ram.position.set(x, 0.12 - 0.095 * k, z); }
   if (tools.stylus.visible) { const pts = [[-0.1, 0.012, -0.06], [0.1, 0.012, -0.06], [0.1, 0.012, 0.06], [-0.1, 0.012, 0.06], [0.0, 0.05, 0.08]]; const tms = [62.8, 63.3, 63.8, 64.2, 64.5]; let i = 0; for (let j = 0; j < tms.length; j++) if (t >= tms[j] - 0.4) i = j; const p = pts[i], prev = pts[Math.max(0, i - 1)]; const k = ease.io(seg(t, tms[i] - 0.4, tms[i])); tools.stylus.position.set(lerp(prev[0], p[0], k), lerp(prev[1], p[1], k) + 0.03 * Math.sin(Math.PI * k), lerp(prev[2], p[2], k)); }
   // hall
@@ -287,7 +287,7 @@ export function seek(t) {
   if (sh.scene === 'none') { renderer.setClearColor('#06080b', 1); renderer.clear(); paper.style.opacity = Math.max(paperK, t >= 34.5 && t < 42 ? 1 : 0); if (t < 0.9 || t >= 89.5) { black.style.opacity = Math.max(blackK, 1); } }
   else {
     const scene = sh.scene === 'hall' ? world.scene : studio; renderPass.scene = scene;
-    if (sh.scene === 'studio') { const key = studio.userData.key; key.position.set(camera.position.x * 0.3 + 2, Math.max(1.5, camera.position.y + 3), camera.position.z * 0.3 + 3); key.target.position.set(0, 0, 0); const m = studioMachine ? machines[studioMachine] : null; const sz = m ? Math.max(m.size.x, m.size.y, m.size.z) : 0.5; key.shadow.camera.left = key.shadow.camera.bottom = -sz; key.shadow.camera.right = key.shadow.camera.top = sz; key.shadow.camera.updateProjectionMatrix(); bloom.strength = 0.35; }
+    if (sh.scene === 'studio') { const dark = t < 5.6; studio.background.set(dark ? '#0b0f13' : '#e6e4df'); studio.userData.floor.material.color.set(dark ? '#0f1316' : '#e3e1dc'); studio.userData.hemi.intensity = dark ? 0.15 : 0.45; product.wire.material.color.set(dark ? '#6db3ff' : '#1f6fd6'); const key = studio.userData.key; key.position.set(camera.position.x * 0.3 + 2, Math.max(1.5, camera.position.y + 3), camera.position.z * 0.3 + 3); key.target.position.set(0, 0, 0); const m = studioMachine ? machines[studioMachine] : null; const sz = m ? Math.max(m.size.x, m.size.y, m.size.z) : 0.5; key.shadow.camera.left = key.shadow.camera.bottom = -sz; key.shadow.camera.right = key.shadow.camera.top = sz; key.shadow.camera.updateProjectionMatrix(); bloom.strength = 0.35; }
     else { bloom.strength = 0.2; }
     composer.render();
   }
