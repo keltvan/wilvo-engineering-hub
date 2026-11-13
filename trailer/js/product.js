@@ -140,10 +140,9 @@ export class Product {
     this.inserts.forEach((n, i) => { const k = clamp(s.inserts * 4 - i); n.visible = k > 0; n.position.y = T + 0.003 + 0.05 * (1 - ease.in(k)); });
     const a = ease.io(clamp(s.assemble)), ex = clamp(s.explode);
     this.asm.visible = s.base > 0.001;
-    this.base.position.y = -0.03 - 0.14 * (1 - a) - 0.06 * ex;
-    this.twin.position.set(0, 0.18 * (1 - a) + 0.07 * ex, 0.0); this.twin.rotation.y = Math.PI;
-    this.twin.position.z = 0.0; this.twin.position.x = 0; this.twin.position.y += 0.0;
-    this.bolts.forEach((b, i) => { const k = clamp(a * 2 - 1); b.visible = k > 0; b.position.y = T + 0.009 + 0.05 * (1 - k) + 0.03 * ex; });
+    this.base.position.y = -T - 0.10 * (1 - a) - 0.05 * ex;
+    this.twin.rotation.x = Math.PI; this.twin.position.set(0, 2 * FH + T + 0.16 * (1 - a) + 0.06 * ex, 0);
+    this.bolts.forEach((b, i) => { const k = clamp(a * 2 - 1); b.visible = k > 0; b.position.y = -T - 0.004 - 0.05 * (1 - k) - 0.03 * ex; b.rotation.x = Math.PI; });
     this.scan.material.opacity = s.scanY > -0.5 && s.scanY < 0.5 ? 0.35 : 0; this.scan.position.y = (s.scanY + 0.5) * 0.09 - 0.01;
     this.sheet.visible = s.sheet > 0.5;
     const ck = clamp(s.cut); this.cutTube.visible = ck > 0.001 && ck < 1.2; this.cutTube.geometry.setDrawRange(0, Math.floor(this.cutIndexCount * ck));
@@ -158,7 +157,7 @@ export class Product {
 export class Tools {
   constructor(env) {
     this.group = new THREE.Group();
-    const steel = new THREE.MeshPhysicalMaterial({ color: '#5a6168', metalness: 0.85, roughness: 0.35, envMap: env });
+    const steel = new THREE.MeshPhysicalMaterial({ color: '#9ea4aa', metalness: 0.7, roughness: 0.4, envMap: env });
     const blue = new THREE.MeshPhysicalMaterial({ color: '#2d6db5', metalness: 0.2, roughness: 0.45, envMap: env });
     // press brake: V-die below the bend line (x axis), punch + beam above
     this.die = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.09), steel); this.die.position.set(0, -0.027, 0); this.die.castShadow = true; this.die.receiveShadow = true;
@@ -166,7 +165,7 @@ export class Tools {
     this.punchGroup = new THREE.Group();
     this.punch = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.018, 0.018), steel); this.punch.rotation.x = Math.PI / 4; this.punch.position.y = 0.012; this.punchGroup.add(this.punch);
     const neck = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.012), steel); neck.position.y = 0.05; this.punchGroup.add(neck);
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.07, 0.04), blue); beam.position.y = 0.115; this.punchGroup.add(beam);
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.035), blue); beam.position.y = 0.105; this.punchGroup.add(beam);
     this.punchGroup.position.y = 0.2; this.punchGroup.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
     this.brake = new THREE.Group(); this.brake.add(this.die, this.punchGroup); this.brake.visible = false; this.group.add(this.brake);
     // welding torch

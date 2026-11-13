@@ -12,9 +12,9 @@ function env(p, t, a, d, s, r, peak = 1, sus = 0.6, len = 0.3) {
 export class Score {
   constructor(ctx, offset = 0) {
     this.ctx = ctx; this.o = offset; // offset: seconds subtracted from every event (live seek)
-    this.master = ctx.createGain(); this.master.gain.value = 0.9;
+    this.master = ctx.createGain(); this.master.gain.value = 0.5;
     this.comp = ctx.createDynamicsCompressor(); this.comp.threshold.value = -14; this.comp.ratio.value = 4; this.comp.attack.value = 0.004; this.comp.release.value = 0.2;
-    this.master.connect(this.comp); this.comp.connect(ctx.destination);
+    this.lim = ctx.createDynamicsCompressor(); this.lim.threshold.value = -4; this.lim.knee.value = 0; this.lim.ratio.value = 20; this.lim.attack.value = 0.001; this.lim.release.value = 0.08; this.out = ctx.createGain(); this.out.gain.value = 0.85; this.master.connect(this.comp); this.comp.connect(this.lim); this.lim.connect(this.out); this.out.connect(ctx.destination);
     this.music = ctx.createGain(); this.music.connect(this.master);
     this.sfx = ctx.createGain(); this.sfx.gain.value = 1; this.sfx.connect(this.master);
     this.noiseBuf = this.makeNoise();

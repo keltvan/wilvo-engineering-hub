@@ -11,6 +11,7 @@ import { World, W, ZONE_ORDER } from './world.js';
 import { Product, Tools, PRODUCT, BL, BW, FH, T as PT } from './product.js';
 import { Overlay, h, typer, counter, stagger } from './overlay.js';
 import { Score } from './audio.js';
+import { sfxCues } from './cues.js';
 
 export const DURATION = 90;
 const DROP = 42.0;
@@ -142,31 +143,6 @@ function buildOverlay() {
 }
 buildOverlay();
 
-// ---------------------------------------------------------------- sound cues that belong to the pictures
-function sfxCues(s) {
-  s.whoosh(0.0, 0.9, 0.2); [0.9, 2.07, 3.24, 4.41].forEach(t => s.whoosh(t, 0.25, 0.2));
-  s.laser(3.24, 1.1, 0.25); s.weld(4.41, 1.1, 0.22);
-  s.whoosh(7.5, 1.2, 0.25);
-  s.ping(9.4, 1568, 0.35); s.tick(9.6); s.tick(9.75);
-  s.whoosh(12.4, 0.8, 0.35);
-  // engineering: ticks for lines, error, confirm
-  for (let i = 0; i < 6; i++) s.tick(15.65 + i * 0.42); s.error(17.75 + 2 * 0.42 + 0.0); s.confirm(21.0);
-  for (let i = 0; i < 4; i++) s.tick(23.15 + i * 0.42); s.whoosh(24.4, 0.8, 0.25); s.confirm(26.4);
-  for (let i = 0; i < 6; i++) s.tick(28.65 + i * 0.42); for (let i = 0; i < 7; i++) s.pluck(30.6 + i * 0.16, 660 + i * 110, 0.12, 0.2); s.confirm(33.2);
-  for (let i = 0; i < 8; i++) s.tick(34.9 + i * 0.11, 0.14); s.whoosh(40.5, 0.5, 0.3);
-  // production
-  s.whoosh(42.0, 1.6, 0.4);
-  s.laser(45.3, 2.4, 0.4); s.whoosh(47.2, 0.5, 0.3);
-  s.hydraulic(49.6, 0.7); s.press(50.3, 1); s.hydraulic(51.1, 0.7); s.press(51.8, 1); s.whoosh(52.2, 0.5, 0.3);
-  s.weld(55.0, 2.0, 0.35); s.whoosh(57.0, 0.5, 0.3);
-  [59.2, 59.6, 60.0, 60.4].forEach(t => s.pneu(t)); s.whoosh(60.8, 0.5, 0.3);
-  [62.8, 63.3, 63.8, 64.2].forEach(t => s.probe(t)); for (let i = 0; i < 7; i++) s.tick(63.1 + i * 0.32, 0.12); s.confirm(65.0); s.whoosh(64.6, 0.5, 0.3);
-  s.whoosh(66.2, 0.6, 0.3); s.press(68.6, 0.5); s.confirm(68.9); s.whoosh(69.4, 0.5, 0.3);
-  s.press(72.2, 0.4); s.whoosh(73.0, 0.5, 0.3); s.truck(73.2, 4.5, 0.3);
-  s.whoosh(76.0, 1.0, 0.3); for (let i = 0; i < 5; i++) s.ping(76.6 + i * 0.12, 1320 + i * 220, 0.12);
-  for (let i = 0; i < 30; i++) s.tick(82.6 + i * 0.043, 0.08);
-}
-
 // ---------------------------------------------------------------- shots
 // each shot: [t0, t1, scene, camFn(lt, t) -> {pos,target,fov}]
 const S = [];
@@ -197,7 +173,7 @@ shot(44.0, 45.3, 'studio', lt => { const m = machines.laser; const c = m ? [0, m
 shot(45.3, 47.2, 'studio', lt => orbitT(lt / 1.9, [-25, 56, 0.9, [0.08, 0.0, 0.04], 30], [-12, 52, 0.8, [0.08, 0.0, 0.04], 30], ease.lin));
 dept(47.2, 49.0, 'laser', 'zett');
 shot(49.0, 50.2, 'studio', lt => { const m = machines.brake; const c = m ? [0, m.size.y * 0.4, 0] : part; const d = m ? m.size.x * 1.0 : 1; return orbitT(lt / 1.2, [34, 14, d, c, 28], [40, 12, d * 0.92, c, 28], ease.lin); });
-shot(50.2, 52.2, 'studio', lt => orbitT(lt / 2.0, [60, 14, 0.62, [0, 0.03, 0], 30], [75, 12, 0.56, [0, 0.03, 0], 30], ease.lin));
+shot(50.2, 52.2, 'studio', lt => orbitT(lt / 2.0, [112, 24, 0.78, [0, 0.03, 0], 30], [100, 26, 0.7, [0, 0.03, 0], 30], ease.lin));
 dept(52.2, 54.0, 'zett', 'lasse');
 shot(54.0, 55.1, 'studio', lt => { const m = machines.robot; const c = m ? [0, m.size.y * 0.4, 0] : part; const d = m ? Math.max(m.size.x, m.size.z) * 1.05 : 1; return orbitT(lt / 1.1, [-35, 20, d, c, 28], [-25, 18, d * 0.92, c, 28], ease.lin); });
 shot(55.1, 57.0, 'studio', lt => orbitT(lt / 1.9, [200, 26, 0.5, part, 30], [215, 22, 0.44, part, 30], ease.lin));
@@ -209,9 +185,9 @@ shot(62.0, 62.9, 'studio', lt => { const m = machines.cmm; const c = m ? [0, m.s
 shot(62.9, 64.6, 'studio', lt => orbitT(lt / 1.7, [40, 30, 0.6, left, 30], [50, 28, 0.56, left, 30], ease.lin));
 dept(64.6, 66.0, 'kwali', 'monta');
 shot(66.0, 67.2, 'studio', lt => { const m = machines.crane; const c = m ? [0, m.size.y * 0.42, 0] : part; const d = m ? Math.max(m.size.x, m.size.y, m.size.z) * 2.1 : 1; return orbitT(lt / 1.2, [110, 7, d, c, 26], [125, 9, d * 0.95, c, 26], ease.lin); });
-shot(67.2, 69.4, 'studio', lt => orbitT(lt / 2.2, [40, 16, 0.95, [0, 0.03, 0], 30], [25, 14, 0.8, [0, 0.03, 0], 30], ease.lin));
+shot(67.2, 69.4, 'studio', lt => orbitT(lt / 2.2, [40, 18, 1.0, [0, 0.07, 0], 30], [25, 16, 0.85, [0, 0.07, 0], 30], ease.lin));
 dept(69.4, 71.0, 'monta', 'verze');
-shot(71.0, 73.0, 'studio', lt => orbitT(lt / 2.0, [30, 22, 0.9, [0, 0.08, 0], 30], [45, 18, 0.8, [0, 0.08, 0], 30], ease.lin));
+shot(71.0, 73.0, 'studio', lt => orbitT(lt / 2.0, [30, 22, 1.35, [0, 0.09, 0], 30], [45, 18, 1.2, [0, 0.09, 0], 30], ease.lin));
 shot(73.0, 76.0, 'hall', lt => { const k = ease.io(lt / 3); return hallCam([lerp(120, 60, k), lerp(-40, -110, k), lerp(16, 60, k)], [lerp(153, 150, k), lerp(-8, 0, k), 2], lerp(36, 30, k)); });
 // act 5
 shot(76.0, 82.0, 'hall', lt => { const k = lt / 6; return hallCam([lerp(-90, -70, k), lerp(-150, -140, k), lerp(90, 100, k)], [lerp(100, 105, k), lerp(60, 62, k), 0], 30); });
@@ -265,14 +241,14 @@ function setState(t) {
       const cur = t < 51.55 ? p1 : p2; const side = t < 51.55 ? -1 : 1;
       product.group.position.set(0, 0, -side * BW / 2);           // bend line on the origin
       rig.rotation.x = side * (Math.PI / 4) * ease.io(cur.down) * (1 - ease.io(cur.up));
-      rig.position.y = 0.004 + 0.02 * ease.io(cur.down) * (1 - ease.io(cur.up));
+      rig.position.y = 0.004 - 0.014 * ease.io(cur.down) * (1 - ease.io(cur.up));
       const shift = ease.io(seg(t, 51.3, 51.7)); product.group.position.z = -side * BW / 2 + (t < 51.55 ? 0 : 0) ; if (t >= 51.3 && t < 51.55) product.group.position.z = BW / 2 - BW * shift;
       tools.punchGroup.position.y = 0.2 - 0.19 * ease.io(cur.down) * (1 - ease.io(cur.up)); }
     else if (t >= 54.0 && t < 58.5) { studioMachine = t < 55.1 ? 'robot' : null; s.bend1 = s.bend2 = 1; s.weld = seg(t, 55.2, 57.0); weldWindow = [55.2, 57.0]; arc = hold(t, 55.2, 57.0, 0.1); tools.torch.visible = studioMachine === null; s.weldCool = seg(t, 57.0, 58.5); }
     else if (t >= 58.5 && t < 62.0) { studioMachine = t < 59.3 ? 'press' : null; s.bend1 = s.bend2 = 1; s.weld = 1; s.weldCool = 1; s.inserts = [59.2, 59.6, 60.0, 60.4].reduce((a, tt, i) => a + seg(t, tt, tt + 0.25) / 4, 0); tools.ram.visible = studioMachine === null; }
     else if (t >= 62.0 && t < 66.0) { studioMachine = t < 62.9 ? 'cmm' : null; s.bend1 = s.bend2 = 1; s.weld = 1; s.weldCool = 1; s.inserts = 1; tools.stylus.visible = studioMachine === null; }
-    else if (t >= 66.0 && t < 71.0) { studioMachine = t < 67.2 ? 'crane' : null; s.bend1 = s.bend2 = 1; s.weld = 1; s.weldCool = 1; s.inserts = 1; s.base = 1; s.explode = 1 - seg(t, 67.4, 68.0); s.assemble = seg(t, 67.8, 69.0); }
-    else if (t >= 71.0 && t < 76.0) { s.bend1 = s.bend2 = 1; s.weld = 1; s.weldCool = 1; s.inserts = 1; s.base = 1; s.assemble = 1; s.box = seg(t, 71.2, 71.9); s.boxLid = seg(t, 72.0, 72.5); product.group.position.y = 0.0; }
+    else if (t >= 66.0 && t < 71.0) { studioMachine = t < 67.2 ? 'crane' : null; s.bend1 = s.bend2 = 1; s.weld = 1; s.weldCool = 1; s.inserts = 1; s.base = 1; s.explode = 1 - seg(t, 67.4, 68.0); s.assemble = seg(t, 67.8, 69.0); product.group.position.y = PT; }
+    else if (t >= 71.0 && t < 76.0) { s.bend1 = s.bend2 = 1; s.weld = 1; s.weldCool = 1; s.inserts = 1; s.base = 1; s.assemble = 1; s.box = seg(t, 71.2, 71.9); s.boxLid = seg(t, 72.0, 72.5); product.group.position.y = PT; }
   }
   // apply
   product.apply(t);
