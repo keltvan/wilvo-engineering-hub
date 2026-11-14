@@ -16,7 +16,8 @@
   --f-serif: 'Bitter', Georgia, serif; --f-sans: 'Roboto', system-ui, sans-serif; --f-mono: 'JetBrains Mono', ui-monospace, monospace; --f-cond: 'Archivo', 'Roboto', sans-serif; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--s, 1)); transform-origin: center; background: var(--paper); overflow: hidden; font-family: var(--f-sans); color: var(--ink); }
-#gl { position: absolute; inset: 0; display: block; }
+#gl, #map { position: absolute; inset: 0; display: block; }
+#map { opacity: 0; }
 #ui { position: absolute; inset: 0; pointer-events: none; }
 #ui > * { position: absolute; will-change: transform, opacity; }
 #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
@@ -131,6 +132,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 <body>
 <div id="stage">
   <canvas id="gl" width="1920" height="1080"></canvas>
+  <canvas id="map" width="1920" height="1080"></canvas>
   <div id="paperbg"></div>
   <div id="vignette"></div>
   <div id="ui"></div>
