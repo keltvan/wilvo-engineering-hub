@@ -13,12 +13,12 @@ export function sfxCues(s) {
   [18.0, 22.0, 26.0, 30.0, 34.0].forEach(t => s.whoosh(t, 0.7, 0.3));
   // laser: continuous cut with a pierce pop at the start of each contour
   s.laser(19.0, 2.7, 0.4); for (let i = 0; i < 12; i++) s.pneu(19.0 + i * 0.22, 0.12);
-  // press brake: hydraulic approach and a thud, four times
-  [23.0, 23.75, 24.5, 25.25].forEach(t => { s.hydraulic(t, 0.35, 0.18); s.press(t + 0.36, 0.9); s.hydraulic(t + 0.5, 0.2, 0.12); });
-  // welding: four bursts, one per corner
-  [26.9, 27.6, 28.3, 29.0].forEach(t => s.weld(t, 0.6, 0.35));
-  // assembly: lid lands, four screws
-  s.press(32.0, 0.35); [32.2, 32.55, 32.9, 33.25].forEach(t => { for (let i = 0; i < 6; i++) s.tick(t + i * 0.045, 0.1); s.probe(t + 0.3, 0.15); });
+  // saw: blade spins up, cuts the tube, the piece drops
+  s.hydraulic(22.9, 0.5, 0.12); s.saw && s.saw(23.4, 1.2, 0.35); s.press(25.0, 0.25);
+  // welding: a1 ring around the middenas, then 16 short I-welds on the nokken
+  s.weld(26.9, 0.9, 0.35); s.press(28.2, 0.3); for (let i = 0; i < 16; i++) s.weld(28.5 + i * 0.075, 0.07, 0.25);
+  // assembly: bearings click, screws, nuts (ratchet), top plate lands, M10 with the hex key
+  s.probe(30.95, 0.2); for (let i = 0; i < 5; i++) s.tick(31.2 + i * 0.05, 0.12); for (let i = 0; i < 8; i++) s.tick(31.45 + i * 0.05, 0.1); for (let i = 0; i < 7; i++) { s.probe(31.95 + i * 0.08, 0.14); s.tick(32.05 + i * 0.08, 0.1); } s.press(33.3, 0.35); for (let i = 0; i < 8; i++) s.tick(33.4 + i * 0.06, 0.12); s.confirm(33.9);
   // expedition: carton unfolds (rustle), product lands, flaps close, tape
   s.hydraulic(34.8, 0.4, 0.1); s.press(36.0, 0.3); s.hydraulic(36.1, 0.35, 0.1); s.whoosh(36.6, 0.6, 0.3); s.confirm(37.0);
   // finale
