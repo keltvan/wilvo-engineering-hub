@@ -160,12 +160,12 @@ export class Tools {
     const steel = new THREE.MeshPhysicalMaterial({ color: '#9ea4aa', metalness: 0.7, roughness: 0.4, envMap: env });
     const blue = new THREE.MeshPhysicalMaterial({ color: '#2d6db5', metalness: 0.2, roughness: 0.45, envMap: env });
     // press brake: V-die below the bend line (x axis), punch + beam above
-    this.die = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.09), steel); this.die.position.set(0, -0.027, 0); this.die.castShadow = true; this.die.receiveShadow = true;
-    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.03, 0.03), new THREE.MeshStandardMaterial({ color: '#1a1e22', roughness: 0.8 })); groove.rotation.x = Math.PI / 4; groove.position.set(0, 0.025, 0); this.die.add(groove);
+    this.die = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.09), steel); this.die.position.set(0, -0.027, 0); this.die.castShadow = true; this.die.receiveShadow = true;
+    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.03, 0.03), new THREE.MeshStandardMaterial({ color: '#1a1e22', roughness: 0.8 })); groove.rotation.x = Math.PI / 4; groove.position.set(0, 0.025, 0); this.die.add(groove);
     this.punchGroup = new THREE.Group();
-    this.punch = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.018, 0.018), steel); this.punch.rotation.x = Math.PI / 4; this.punch.position.y = 0.012; this.punchGroup.add(this.punch);
-    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.012), steel); neck.position.y = 0.05; this.punchGroup.add(neck);
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.035), blue); beam.position.y = 0.105; this.punchGroup.add(beam);
+    this.punch = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.018, 0.018), new THREE.MeshPhysicalMaterial({ color: '#4a5056', metalness: 0.8, roughness: 0.35, envMap: env })); this.punch.rotation.x = Math.PI / 4; this.punch.position.y = 0.012; this.punchGroup.add(this.punch);
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.012), new THREE.MeshPhysicalMaterial({ color: '#4a5056', metalness: 0.8, roughness: 0.35, envMap: env })); neck.position.y = 0.05; this.punchGroup.add(neck);
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.04, 0.03), blue); beam.position.y = 0.095; this.punchGroup.add(beam);
     this.punchGroup.position.y = 0.2; this.punchGroup.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
     this.brake = new THREE.Group(); this.brake.add(this.die, this.punchGroup); this.brake.visible = false; this.group.add(this.brake);
     // welding torch
@@ -173,6 +173,13 @@ export class Tools {
     const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.004, 0.03, 12), new THREE.MeshPhysicalMaterial({ color: '#c58a4d', metalness: 1, roughness: 0.3, envMap: env })); tip.position.y = 0.012; this.torch.add(tip); this.torch.rotation.z = -0.5; this.torch.visible = false; this.group.add(this.torch);
     // insert press ram
     this.ram = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.12, 24), steel); this.ram.visible = false; this.group.add(this.ram);
+    // laser cutting head: nozzle + body, moves along the contour
+    this.head = new THREE.Group();
+    const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.007, 0.03, 20), new THREE.MeshPhysicalMaterial({ color: '#c58a4d', metalness: 1, roughness: 0.3, envMap: env })); noz.position.y = 0.015; this.head.add(noz);
+    const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.05, 24), new THREE.MeshPhysicalMaterial({ color: '#dfe2e4', metalness: 0.3, roughness: 0.35, envMap: env })); hb.position.y = 0.055; this.head.add(hb);
+    const hb2 = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.04, 0.03), new THREE.MeshPhysicalMaterial({ color: '#0d57a3', metalness: 0.2, roughness: 0.45, envMap: env })); hb2.position.y = 0.1; this.head.add(hb2);
+    const lbeam = new THREE.Mesh(new THREE.CylinderGeometry(0.0008, 0.0008, 0.016, 8), new THREE.MeshBasicMaterial({ color: '#ffd9a0', toneMapped: false })); lbeam.position.y = -0.006; this.head.add(lbeam);
+    this.head.traverse(o => { if (o.isMesh) o.castShadow = true; }); this.head.visible = false; this.group.add(this.head);
     // CMM stylus
     this.stylus = new THREE.Group(); const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0015, 0.0015, 0.08, 10), steel); shaft.position.y = 0.04; this.stylus.add(shaft); const ball = new THREE.Mesh(new THREE.SphereGeometry(0.003, 16, 12), new THREE.MeshPhysicalMaterial({ color: '#d84b3f', metalness: 0.1, roughness: 0.3, envMap: env })); this.stylus.add(ball); const head = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.03), new THREE.MeshStandardMaterial({ color: '#e8e6e0' })); head.position.y = 0.095; this.stylus.add(head); this.stylus.visible = false; this.group.add(this.stylus);
   }

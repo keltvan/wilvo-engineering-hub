@@ -1,27 +1,19 @@
-// Sound effects that belong to the pictures (times in seconds).
-// ---------------------------------------------------------------- sound cues that belong to the pictures
-export const DURATION = 90;
+// Sound effects that belong to the pictures (times in seconds) · 45 s version.
+export const DURATION = 45;
 export function sfxCues(s) {
-  s.whoosh(0.0, 0.9, 0.2); [0.9, 2.07, 3.24, 4.41].forEach(t => s.whoosh(t, 0.25, 0.2));
-  s.laser(3.24, 1.1, 0.25); s.weld(4.41, 1.1, 0.22);
-  s.whoosh(7.5, 1.2, 0.25);
-  s.ping(9.4, 1568, 0.35); s.tick(9.6); s.tick(9.75);
-  s.whoosh(12.4, 0.8, 0.35);
-  // engineering: ticks for lines, error, confirm
-  for (let i = 0; i < 6; i++) s.tick(15.65 + i * 0.42); s.error(17.75 + 2 * 0.42 + 0.0); s.confirm(21.0);
-  for (let i = 0; i < 4; i++) s.tick(23.15 + i * 0.42); s.whoosh(24.4, 0.8, 0.25); s.confirm(26.4);
-  for (let i = 0; i < 6; i++) s.tick(28.65 + i * 0.42); for (let i = 0; i < 7; i++) s.pluck(30.6 + i * 0.16, 660 + i * 110, 0.12, 0.2); s.confirm(33.2);
-  for (let i = 0; i < 8; i++) s.tick(34.9 + i * 0.11, 0.14); s.whoosh(40.5, 0.5, 0.3);
+  s.whoosh(0.0, 0.7, 0.2); [0.6, 1.55, 2.5, 3.45].forEach(t => s.whoosh(t, 0.22, 0.2));
+  s.laser(2.5, 0.9, 0.25); s.weld(3.45, 0.9, 0.22);
+  s.whoosh(6.5, 1.4, 0.3); s.ping(7.6, 1568, 0.35); s.tick(7.8); s.tick(7.95); s.ping(9.3, 1175, 0.25);
+  // engineering montage: a tick per card, error, confirms
+  [11.0, 12.4, 13.8, 15.4, 16.6].forEach(t => { s.whoosh(t, 0.25, 0.22); s.tick(t + 0.05, 0.2); });
+  s.error(11.95); s.confirm(12.9); for (let i = 0; i < 5; i++) s.pluck(14.0 + i * 0.1, 660 + i * 110, 0.12, 0.2); s.confirm(15.9); s.whoosh(17.5, 0.4, 0.3);
   // production
-  s.whoosh(42.0, 1.6, 0.4);
-  s.laser(45.3, 2.4, 0.4); s.whoosh(47.2, 0.5, 0.3);
-  s.hydraulic(49.6, 0.7); s.press(50.3, 1); s.hydraulic(51.1, 0.7); s.press(51.8, 1); s.whoosh(52.2, 0.5, 0.3);
-  s.weld(55.0, 2.0, 0.35); s.whoosh(57.0, 0.5, 0.3);
-  [59.2, 59.6, 60.0, 60.4].forEach(t => s.pneu(t)); s.whoosh(60.8, 0.5, 0.3);
-  [62.8, 63.3, 63.8, 64.2].forEach(t => s.probe(t)); for (let i = 0; i < 7; i++) s.tick(63.1 + i * 0.32, 0.12); s.confirm(65.0); s.whoosh(64.6, 0.5, 0.3);
-  s.whoosh(66.2, 0.6, 0.3); s.press(68.6, 0.5); s.confirm(68.9); s.whoosh(69.4, 0.5, 0.3);
-  s.press(72.2, 0.4); s.whoosh(73.0, 0.5, 0.3); s.truck(73.2, 4.5, 0.3);
-  s.whoosh(76.0, 1.0, 0.3); for (let i = 0; i < 5; i++) s.ping(76.6 + i * 0.12, 1320 + i * 220, 0.12);
-  for (let i = 0; i < 30; i++) s.tick(82.6 + i * 0.043, 0.08);
+  [18.0, 22.0, 26.0, 30.0, 34.0].forEach(t => s.whoosh(t, 0.8, 0.32));
+  s.laser(19.0, 2.6, 0.4);
+  s.hydraulic(23.1, 0.6); s.press(23.7, 1); s.hydraulic(24.6, 0.6); s.press(25.2, 1);
+  s.weld(27.0, 2.2, 0.35);
+  s.press(32.2, 0.5); s.confirm(32.8);
+  s.press(35.6, 0.4); s.whoosh(36.6, 0.6, 0.3); s.confirm(37.0);
+  s.whoosh(38.0, 1.0, 0.3); for (let i = 0; i < 4; i++) s.ping(38.6 + i * 0.12, 1320 + i * 220, 0.12);
+  for (let i = 0; i < 30; i++) s.tick(42.0 + i * 0.04, 0.08);
 }
-

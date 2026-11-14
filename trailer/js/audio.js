@@ -50,51 +50,44 @@ export class Score {
   probe(t, v = 0.2) { if (!this.live(t)) return; const c = this.ctx, T = this.T(t); const o = c.createOscillator(), g = c.createGain(); o.frequency.value = 3200; g.gain.setValueAtTime(v, T); g.gain.exponentialRampToValueAtTime(0.001, T + 0.05); o.connect(g).connect(this.sfx); o.start(T); o.stop(T + 0.06); }
   truck(t, len = 5, v = 0.25) { if (!this.live(t)) return; const c = this.ctx, T = this.T(t); const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(38, T); o.frequency.linearRampToValueAtTime(70, T + len * 0.6); o.frequency.linearRampToValueAtTime(55, T + len); const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240; const g = c.createGain(); g.gain.setValueAtTime(0.001, T); g.gain.exponentialRampToValueAtTime(v, T + 0.5); g.gain.setValueAtTime(v, T + len - 1); g.gain.exponentialRampToValueAtTime(0.001, T + len); o.connect(lp).connect(g).connect(this.sfx); o.start(T); o.stop(T + len + 0.05); const n = c.createBufferSource(); n.buffer = this.noiseBuf; n.loop = true; const bp = c.createBiquadFilter(); bp.type = 'lowpass'; bp.frequency.value = 500; const ng = c.createGain(); ng.gain.setValueAtTime(0.001, T); ng.gain.exponentialRampToValueAtTime(v * 0.5, T + 0.5); ng.gain.exponentialRampToValueAtTime(0.001, T + len); n.connect(bp).connect(ng).connect(this.sfx); n.start(T); n.stop(T + len + 0.05); }
 
-  // ---------- the arrangement
+  // ---------- the arrangement (45 s · 128 bpm · 24 bars)
   schedule() {
     const K = (t, v) => this.kick(t, v), S = (t, v) => this.snare(t, v), H = (t, v, o) => this.hat(t, v, o);
-    const root = 55; // A1
-    const prog = [[1, 5 / 4 * 0 + 1], [1.5 / 1.5 * 1, 1]];
-    // --- act 1: hook (0-7.5): pulse + hits on cuts
-    this.pad(0, [root * 2, root * 3], 7.5, 0.05, 500);
-    for (let i = 0; i < 4; i++) K(0.9 + i * 1.17, 0.9);
-    this.riser(2.5, 3.1, 0.25);
-    this.impact(5.6, 1.1);
-    // --- act 2: order (7.5-15): groove in, half-time feel
-    const b0 = 7.5;
-    this.pad(b0, [root * 2, root * 3, root * 2 * 1.5], 7.5, 0.07, 1200);
-    for (let b = 0; b < 4; b++) { const t = b0 + b * BAR; K(t); K(t + 2 * BEAT); S(t + 2 * BEAT, 0.5); for (let i = 0; i < 8; i++) H(t + i * BEAT / 2, i % 2 ? 0.12 : 0.2); this.bass(t, root, BEAT * 0.9, 0.35); this.bass(t + 1.5 * BEAT, root, BEAT * 0.45, 0.3); this.bass(t + 3 * BEAT, root * 1.5 / 2 * 1.3348, BEAT * 0.9, 0.3); }
-    this.ping(9.4, 1568, 0.3); this.whoosh(12.0, 0.7, 0.3);
-    // --- act 3: engineering (15-42): driving, more energy per card
-    const b1 = 15;
+    const root = 55;
     const chords = [[root * 2, root * 2 * 1.5, root * 4 * 1.1892], [root * 2 * 0.8909, root * 2 * 1.3348, root * 4 * 1.0595], [root * 2 * 1.1892, root * 2 * 1.7818, root * 4 * 1.4142], [root * 2 * 1.3348, root * 4, root * 4 * 1.1892]];
-    for (let b = 0; b < 14; b++) {
-      const t = b1 + b * BAR; const ch = chords[b % 4];
-      this.pad(t, ch, BAR + 0.1, 0.07, 1500 + b * 60);
+    // hook 0-4.4: pulse and hits on the cuts
+    this.pad(0, [root * 2, root * 3], 4.6, 0.05, 500);
+    for (let i = 0; i < 4; i++) K(0.6 + i * 0.95, 0.9);
+    this.riser(1.8, 2.6, 0.25); this.impact(4.4, 1.1);
+    // order 6.5-11: groove in
+    this.pad(6.5, [root * 2, root * 3, root * 2 * 1.5], 4.6, 0.07, 1200);
+    for (let b = 0; b < 2; b++) { const t = 6.5 + 0.4 + b * BAR; K(t); K(t + 2 * BEAT); S(t + 2 * BEAT, 0.5); for (let i = 0; i < 8; i++) H(t + i * BEAT / 2, i % 2 ? 0.12 : 0.2); this.bass(t, root, BEAT * 0.9, 0.35); this.bass(t + 1.5 * BEAT, root, BEAT * 0.45, 0.3); this.bass(t + 3 * BEAT, root * 1.3348 * 0.75, BEAT * 0.9, 0.3); }
+    // engineering 11-18: driving
+    for (let b = 0; b < 4; b++) {
+      const t = 11 + b * BAR; const ch = chords[b % 4];
+      this.pad(t, ch, BAR + 0.1, 0.07, 1500 + b * 150);
       K(t); K(t + 2 * BEAT); K(t + 3.5 * BEAT, 0.6); S(t + BEAT, 0.6); S(t + 3 * BEAT, 0.7);
       for (let i = 0; i < 8; i++) H(t + i * BEAT / 2, i % 2 ? 0.14 : 0.24, i === 7);
       for (let i = 0; i < 8; i++) this.bass(t + i * BEAT / 2, i % 4 === 3 ? ch[0] / 2 * 1.5 : ch[0] / 2, BEAT * 0.42, 0.33);
       for (let i = 0; i < 4; i++) this.pluck(t + i * BEAT + BEAT / 4, ch[(i + b) % 3] * 2, 0.08, 0.3);
     }
-    this.riser(38.5, 3.5, 0.45);
-    // --- act 4: production (42-76): the drop
-    this.impact(DROP, 1.3);
-    for (let b = 0; b < 18; b++) {
-      const t = DROP + b * BAR; const ch = chords[b % 4];
+    this.riser(15.6, 2.4, 0.45);
+    // production 18-38: the drop
+    this.impact(18, 1.3);
+    for (let b = 0; b < 11; b++) {
+      const t = 18 + b * BAR; const ch = chords[b % 4];
       K(t); K(t + BEAT); K(t + 2 * BEAT); K(t + 3 * BEAT); S(t + BEAT, 0.8); S(t + 3 * BEAT, 0.9);
       for (let i = 0; i < 16; i++) H(t + i * BEAT / 4, i % 4 === 2 ? 0.26 : 0.1, i % 8 === 6);
       for (let i = 0; i < 8; i++) this.bass(t + i * BEAT / 2 + BEAT / 4, i % 3 === 2 ? ch[0] / 2 * 1.5 : ch[0] / 2, BEAT * 0.4, 0.38);
       this.pad(t, ch.map(f => f * 2), BAR + 0.1, 0.05, 3000);
       for (let i = 0; i < 8; i++) this.pluck(t + i * BEAT / 2, ch[[0, 2, 1, 2, 0, 1, 2, 1][i]] * 2, 0.07, 0.2);
     }
-    // --- act 5: finale (76-90)
-    const b4 = 76;
-    this.impact(b4, 1.0);
-    for (let b = 0; b < 3; b++) { const t = b4 + b * BAR; const ch = chords[(b + 1) % 4]; this.pad(t, [...ch, ch[0] * 2], BAR + 0.1, 0.09, 2600); K(t); K(t + 2 * BEAT); S(t + BEAT); S(t + 3 * BEAT); for (let i = 0; i < 8; i++) H(t + i * BEAT / 2, 0.18, i === 7); for (let i = 0; i < 4; i++) this.bass(t + i * BEAT, ch[0] / 2, BEAT * 0.8, 0.36); }
-    this.riser(80.4, 1.6, 0.3);
-    this.impact(82.0, 1.2);
-    this.pad(82, [root, root * 2, root * 3, root * 4 * 1.1892], 8, 0.09, 2000);
-    this.pluck(86.0, 880, 0.15, 1.2); this.pluck(86.12, 1320, 0.12, 1.2);
+    // finale 38-45
+    this.impact(38, 1.0);
+    for (let b = 0; b < 2; b++) { const t = 38 + b * BAR; const ch = chords[(b + 1) % 4]; this.pad(t, [...ch, ch[0] * 2], BAR + 0.1, 0.09, 2600); K(t); K(t + 2 * BEAT); S(t + BEAT); S(t + 3 * BEAT); for (let i = 0; i < 8; i++) H(t + i * BEAT / 2, 0.18, i === 7); for (let i = 0; i < 4; i++) this.bass(t + i * BEAT, ch[0] / 2, BEAT * 0.8, 0.36); }
+    this.riser(40.2, 1.3, 0.3); this.impact(41.5, 1.2);
+    this.pad(41.5, [root, root * 2, root * 3, root * 4 * 1.1892], 3.6, 0.09, 2000);
+    this.pluck(43.0, 880, 0.15, 1.2); this.pluck(43.12, 1320, 0.12, 1.2);
   }
 }
 
