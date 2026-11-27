@@ -10,6 +10,9 @@
   "background_color": "#f5f3f1",
   "theme_color": "#ffffff",
   "lang": "nl",
+  "protocol_handlers": [
+    { "protocol": "web+wilvo", "url": "ga.html?u=%s" }
+  ],
   "file_handlers": [
     { "action": "openen.html", "accept": { "model/step": [".step", ".stp"], "application/dxf": [".dxf"] } }
   ],

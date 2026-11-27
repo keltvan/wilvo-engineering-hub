@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WILVO | Hub openen</title>
+<link rel="icon" href="favicon-32.png">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- Start de geïnstalleerde Hub-app vanuit een link (bijvoorbeeld een tegel in Epicor Kinetic):
+       ga.html?naar=nesting   in een browsertabblad: start de app via web+wilvo:nesting en sluit het tabblad
+       ga.html?u=web+wilvo:…  in de app (protocol_handlers in manifest.webmanifest): door naar het hulpmiddel
+     Bewust niet versleuteld: alleen doorsturen, geen gegevens. Alleen namen uit DOEL, nooit een vrij adres. -->
+<style>
+@font-face { font-family: "Bitter"; font-weight: 100 900; font-display: swap; src: url(fonts/bitter.woff2) format("woff2"); }
+@font-face { font-family: "Roboto"; font-weight: 100 900; font-display: swap; src: url(fonts/roboto.woff2) format("woff2"); }
+:root { --red: #e0262e; --ink: #252b2e; --copy: #596267; --line: #d9dddf; --warm: #f5f3f1; --card: #fff; --link: #456675; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #e8ecee; --copy: #aab4b9; --line: #3a4347; --warm: #1d2326; --card: #262d31; --link: #a7c2ce; color-scheme: dark; } }
+:root[data-theme="night"] { --ink: #e8ecee; --copy: #aab4b9; --line: #3a4347; --warm: #1d2326; --card: #262d31; --link: #a7c2ce; color-scheme: dark; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; box-sizing: border-box; background: var(--warm); color: var(--ink); font: 400 15px/1.45 "Roboto", "Segoe UI", Arial, sans-serif; }
+main { width: min(520px, 100%); }
+img { height: 40px; display: block; margin-bottom: 18px; }
+h1 { margin: 0 0 6px; font: 600 1.5rem/1.2 "Bitter", Georgia, serif; }
+p { margin: 0 0 14px; color: var(--copy); }
+a.btn { display: inline-block; padding: 10px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; text-decoration: none; font-weight: 600; }
+a { color: var(--link); }
+</style>
+<script>
+try { const t = localStorage.getItem("wilvo.hub.theme"); if (t === "night") document.documentElement.dataset.theme = "night"; else if (t) document.documentElement.dataset.theme = "light"; } catch (_) {}
+</script>
+</head>
+<body>
+<main>
+  <img src="wilvo-logo.svg" alt="WILVO">
+  <h1 id="titel">WILVO Hub openen …</h1>
+  <p id="info">De app wordt gestart. Vraagt Chrome of de link WILVO Hub mag openen, kies dan Openen (en vink Altijd toestaan aan).</p>
+  <p><a class="btn" id="hier" href="../index.html">Open hier in de browser</a></p>
+  <p id="help">Start de app niet? Installeer de Hub dan eerst als app: open de Hub in Chrome of Edge en kies in de adresbalk Installeren.</p>
+</main>
+<script>
+"use strict";
+// naam → pagina (binnen de site); platen en nesting zijn de twee tabbladen van Platen & nesting
+const DOEL = {
+  hub: "../index.html", inspection: "../generators/inspection/index.html", bom: "../generators/bom/index.html",
+  drawing: "../generators/drawing/index.html", instructie: "../generators/instructie/index.html", viewer: "../generators/viewer/index.html",
+  issues: "../generators/issues/index.html", twin: "../generators/twin/index.html", montage: "../generators/montage/index.html",
+  nesting: "../generators/nesting/index.html#nesting", platen: "../generators/nesting/index.html#zoeken"
+};
+const q = new URLSearchParams(location.search);
+// uit web+wilvo:nesting, web+wilvo://nesting/ of ?naar=nesting alleen het woord; onbekend = de Hub
+const naam = ((q.get("u") || "").replace(/^web[+ ]wilvo:/i, "") || q.get("naar") || "").replace(/[^a-z]/gi, "").toLowerCase();
+const doel = DOEL[naam] ? naam : "hub";
+document.getElementById("hier").href = DOEL[doel];
+const inApp = matchMedia("(display-mode: standalone), (display-mode: window-controls-overlay)").matches;
+if (inApp || q.has("u")) location.replace(DOEL[doel]);   // al in de app: meteen door
+else {
+  location.href = "web+wilvo:" + doel;   // start de geïnstalleerde app
+  // de app neemt het over: dit tabblad heeft geen nut meer (sluiten lukt als Epicor het met een script opende)
+  const klaar = () => {
+    if (!document.hidden && document.hasFocus()) return;
+    document.getElementById("titel").textContent = "Geopend in de WILVO Hub-app";
+    document.getElementById("info").textContent = "Je kunt dit tabblad sluiten.";
+    document.getElementById("help").hidden = true;
+    setTimeout(() => window.close(), 300);
+  };
+  addEventListener("blur", klaar);
+  document.addEventListener("visibilitychange", klaar);
+}
+</script>
+</body>
+</html>
