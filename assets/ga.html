@@ -33,8 +33,8 @@ try { const t = localStorage.getItem("wilvo.hub.theme"); if (t === "night") docu
   <img src="wilvo-logo.svg" alt="WILVO">
   <h1 id="titel">WILVO Hub openen …</h1>
   <p id="info">De app wordt gestart. Vraagt Chrome of de link WILVO Hub mag openen, kies dan Openen (en vink Altijd toestaan aan).</p>
-  <p><a class="btn" id="hier" href="../index.html">Open hier in de browser</a></p>
-  <p id="help">Start de app niet? Installeer de Hub dan eerst als app: open de Hub in Chrome of Edge en kies in de adresbalk Installeren.</p>
+  <p><a class="btn" id="app" href="#">Open de app</a> <a class="btn" id="hier" href="../index.html">Open hier in de browser</a></p>
+  <p id="help">Start de app niet? Installeer de Hub als app (open de Hub in Chrome of Edge en kies in de adresbalk Installeren). Was hij al geïnstalleerd vóór 27-11-2026, verwijder de app dan en installeer hem opnieuw: pas dan kent hij de links.</p>
 </main>
 <script>
 "use strict";
@@ -53,17 +53,18 @@ document.getElementById("hier").href = DOEL[doel];
 const inApp = matchMedia("(display-mode: standalone), (display-mode: window-controls-overlay)").matches;
 if (inApp || q.has("u")) location.replace(DOEL[doel]);   // al in de app: meteen door
 else {
-  location.href = "web+wilvo:" + doel;   // start de geïnstalleerde app
-  // de app neemt het over: dit tabblad heeft geen nut meer (sluiten lukt als Epicor het met een script opende)
-  const klaar = () => {
-    if (!document.hidden && document.hasFocus()) return;
+  const start = () => { location.href = "web+wilvo:" + doel; };   // start de geïnstalleerde app
+  document.getElementById("app").onclick = e => { e.preventDefault(); start(); };
+  start();
+  // Pas sluiten als het tabblad echt naar de achtergrond gaat (de app staat ervoor). NIET bij blur: Chrome vraagt
+  // eerst "WILVO Hub openen?" en die vraag haalt ook de focus weg; sluiten zou de vraag (en de app) wegklikken.
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) return;
     document.getElementById("titel").textContent = "Geopend in de WILVO Hub-app";
     document.getElementById("info").textContent = "Je kunt dit tabblad sluiten.";
     document.getElementById("help").hidden = true;
-    setTimeout(() => window.close(), 300);
-  };
-  addEventListener("blur", klaar);
-  document.addEventListener("visibilitychange", klaar);
+    setTimeout(() => window.close(), 300);   // lukt als Epicor het tabblad met een script opende
+  });
 }
 </script>
 </body>
