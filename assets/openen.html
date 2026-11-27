@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WILVO | Openen</title>
+<link rel="icon" href="favicon-32.png">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- Doel van "Openen met → WILVO Hub" in Verkenner (file_handlers in manifest.webmanifest). Bewust niet versleuteld:
+     geen gegevens, alleen een keuze. De bestanden gaan via IndexedDB (zelfde site) naar het hulpmiddel, dat na
+     inloggen ?open leest. STEP gaat direct naar de 3D-viewer; bij alleen DXF's kies je viewer of nesting. -->
+<style>
+@font-face { font-family: "Bitter"; font-weight: 100 900; font-display: swap; src: url(fonts/bitter.woff2) format("woff2"); }
+@font-face { font-family: "Roboto"; font-weight: 100 900; font-display: swap; src: url(fonts/roboto.woff2) format("woff2"); }
+:root { --red: #e0262e; --ink: #252b2e; --copy: #596267; --line: #d9dddf; --warm: #f5f3f1; --card: #fff; --hover: #eef2f3; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #e8ecee; --copy: #aab4b9; --line: #3a4347; --warm: #1d2326; --card: #262d31; --hover: #2f383c; color-scheme: dark; } }
+:root[data-theme="night"] { --ink: #e8ecee; --copy: #aab4b9; --line: #3a4347; --warm: #1d2326; --card: #262d31; --hover: #2f383c; color-scheme: dark; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; box-sizing: border-box; background: var(--warm); color: var(--ink); font: 400 15px/1.45 "Roboto", "Segoe UI", Arial, sans-serif; }
+main { width: min(520px, 100%); }
+img { height: 40px; display: block; margin-bottom: 18px; }
+h1 { margin: 0 0 4px; font: 600 1.5rem/1.2 "Bitter", Georgia, serif; }
+p { margin: 0 0 18px; color: var(--copy); overflow-wrap: anywhere; }
+.keuze { display: grid; gap: 10px; }
+button { display: grid; gap: 3px; width: 100%; padding: 14px 16px; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; font: inherit; cursor: pointer; }
+button:hover, button:focus-visible { background: var(--hover); }
+button b { font: 600 1.15rem/1.2 "Bitter", Georgia, serif; }
+button span { color: var(--copy); font-size: .9rem; }
+</style>
+<script>
+try { const t = localStorage.getItem("wilvo.hub.theme"); if (t === "night") document.documentElement.dataset.theme = "night"; else if (t) document.documentElement.dataset.theme = "light"; } catch (_) {}
+</script>
+</head>
+<body>
+<main>
+  <img src="wilvo-logo.svg" alt="WILVO">
+  <h1 id="titel">Bestand openen in de Hub</h1>
+  <p id="info">Open een STEP of DXF in Verkenner met <b>Openen met → WILVO Hub</b>.</p>
+  <div class="keuze" id="keuze" hidden>
+    <button type="button" data-tool="viewer"><b>Bekijken in de 3D-viewer</b><span>Bekijken en meten, zoals in eDrawings</span></button>
+    <button type="button" data-tool="nesting"><b>Nesten</b><span>Platen & nesting: aantal platen en snijtijd</span></button>
+  </div>
+</main>
+<script>
+"use strict";
+const TOOLS = { viewer: "../generators/viewer/index.html?open", nesting: "../generators/nesting/index.html?open#nesting" };
+function klaarzetten(files) {   // in IndexedDB; het hulpmiddel haalt ze er na het openen weer uit
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open("wilvo-openen", 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore("f");
+    rq.onerror = () => rej(rq.error);
+    rq.onsuccess = () => { const tx = rq.result.transaction("f", "readwrite"); tx.objectStore("f").put(files, "files"); tx.oncomplete = res; tx.onerror = () => rej(tx.error); };
+  });
+}
+async function naar(tool, files) {
+  try { await klaarzetten(files); location.href = TOOLS[tool]; }
+  catch (e) { document.getElementById("info").textContent = "Kon de bestanden niet doorgeven (" + e.message + "). Sleep ze in het hulpmiddel."; }
+}
+if ("launchQueue" in window) launchQueue.setConsumer(async params => {
+  if (!params.files || !params.files.length) return;
+  const files = await Promise.all(params.files.map(h => h.getFile()));
+  const names = files.map(f => f.name);
+  document.getElementById("titel").textContent = files.length === 1 ? names[0] : `${files.length} bestanden`;
+  if (!files.every(f => /\.dxf$/i.test(f.name))) { document.getElementById("info").textContent = "Openen in de 3D-viewer …"; return naar("viewer", files); }
+  document.getElementById("info").textContent = files.length === 1 ? "Waar wil je deze DXF openen?" : names.join(", ");
+  document.getElementById("keuze").hidden = false;
+  document.querySelectorAll("#keuze button").forEach(b => b.onclick = () => naar(b.dataset.tool, files));
+  document.querySelector("#keuze button").focus();
+});
+</script>
+</body>
+</html>

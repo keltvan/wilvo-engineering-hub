@@ -10,6 +10,9 @@
   "background_color": "#f5f3f1",
   "theme_color": "#ffffff",
   "lang": "nl",
+  "file_handlers": [
+    { "action": "openen.html", "accept": { "model/step": [".step", ".stp"], "application/dxf": [".dxf"] } }
+  ],
   "icons": [
     { "src": "favicon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
