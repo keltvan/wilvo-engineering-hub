@@ -51,8 +51,29 @@ function klaarzetten(files) {   // in IndexedDB; het hulpmiddel haalt ze er na h
     rq.onsuccess = () => { const tx = rq.result.transaction("f", "readwrite"); tx.objectStore("f").put(files, "files"); tx.oncomplete = res; tx.onerror = () => rej(tx.error); };
   });
 }
+// Staat Platen & nesting al open? Dan daar bijvoegen en dit venster sluiten, i.p.v. een tweede venster.
+function nestingOpen() {
+  if (!window.BroadcastChannel) return Promise.resolve(null);
+  const k = new BroadcastChannel("wilvo-nesting");
+  return new Promise(res => {
+    const t = setTimeout(() => { k.close(); res(null); }, 400);
+    k.onmessage = e => { if (e.data === "hier") { clearTimeout(t); res(k); } };
+    k.postMessage("wie");
+  });
+}
 async function naar(tool, files) {
-  try { await klaarzetten(files); location.href = TOOLS[tool]; }
+  try {
+    await klaarzetten(files);
+    const k = tool === "nesting" && await nestingOpen();
+    if (k) {
+      k.postMessage("neem");
+      document.getElementById("keuze").hidden = true;
+      document.getElementById("info").textContent = "Toegevoegd aan het open venster Platen & nesting. Je kunt dit venster sluiten.";
+      setTimeout(() => window.close(), 300);
+      return;
+    }
+    location.href = TOOLS[tool];
+  }
   catch (e) { document.getElementById("info").textContent = "Kon de bestanden niet doorgeven (" + e.message + "). Sleep ze in het hulpmiddel."; }
 }
 if ("launchQueue" in window) launchQueue.setConsumer(async params => {
